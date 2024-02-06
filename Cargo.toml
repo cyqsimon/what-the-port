@@ -1,0 +1,17 @@
+[package]
+name = "what-the-port"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.4.18", features = ["derive", "cargo"] }
+clap-verbosity-flag = "2.1.2"
+derivative = "2.2.0"
+itertools = "0.12.1"
+log = "0.4.20"
+regex = "1.10.3"
+scraper = "0.18.1"
+serde = { version = "1.0.196", features = ["derive"] }
+serde_json = "1.0.113"
+simplelog = "0.12.1"
+strum = { version = "0.26.1", features = ["derive"] }
