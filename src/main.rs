@@ -1,5 +1,6 @@
 use clap::Parser;
 use color_eyre::eyre::OptionExt;
+use simplelog::{ColorChoice, TermLogger, TerminalMode};
 use tokio::fs;
 
 use crate::{cli::CliArgs, parse::parse_page, update::get_wikipedia_page_cached};
@@ -20,6 +21,18 @@ async fn main() -> color_eyre::Result<()> {
         json_output,
         verbosity,
     } = CliArgs::parse();
+
+    // init logging
+    let logger_config = simplelog::ConfigBuilder::new()
+        .add_filter_ignore_str("html5ever")
+        .add_filter_ignore_str("selectors")
+        .build();
+    TermLogger::init(
+        verbosity.log_level_filter(),
+        logger_config,
+        TerminalMode::Stderr,
+        ColorChoice::Auto,
+    )?;
 
     // get paths
     let cache_dir = directories::ProjectDirs::from("org", "wtp", "what-the-port")
