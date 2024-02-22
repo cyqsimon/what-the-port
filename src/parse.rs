@@ -143,8 +143,8 @@ where
     let mut types_it = port_types.iter_mut();
     for cell in cells {
         let span = match cell.attr("colspan") {
-            Some(n) => n.parse::<usize>()?,
-            None => 1,
+            Some(n) => n.parse()?,
+            None => 1usize,
         };
         let type_ = cell.try_into()?;
         for _ in 0..span {

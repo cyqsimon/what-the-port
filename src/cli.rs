@@ -43,14 +43,14 @@ impl FromStr for Port {
         let (number_str, protocol) = match s.split_once('/') {
             Some((n, p)) => {
                 let proto = p
-                    .parse::<SupportedProtocol>()
+                    .parse()
                     .map_err(|_| format!(r#"Unknown protocol: "{p}""#))?;
                 (n, proto)
             }
             None => (s, SupportedProtocol::Any),
         };
         let number = number_str
-            .parse::<u16>()
+            .parse()
             .map_err(|_| format!(r#""{number_str}" is not a valid port number"#))?;
         Ok(Self { number, protocol })
     }
