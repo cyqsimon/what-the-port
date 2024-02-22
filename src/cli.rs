@@ -7,6 +7,12 @@ use serde_with::SerializeDisplay;
 #[derive(Clone, Debug, Parser)]
 #[command(author, version)]
 pub struct CliArgs {
+    #[arg(index = 1, value_name = "PORT")]
+    pub port: PortSelection,
+
+    #[arg(long = "revision", visible_alias = "rev")]
+    pub revision: Option<u64>,
+
     #[arg(long = "link")]
     pub show_links: bool,
 
@@ -15,9 +21,6 @@ pub struct CliArgs {
 
     #[arg(short = 'j', long = "json")]
     pub json_output: bool,
-
-    #[arg(index = 1, value_name = "PORT")]
-    pub port: PortSelection,
 
     #[command(flatten)]
     pub verbosity: Verbosity<InfoLevel>,

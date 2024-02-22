@@ -1,6 +1,7 @@
-use std::{borrow::Cow, path::Path};
+use std::path::{Path, PathBuf};
 
 use color_eyre::eyre::OptionExt;
+use log::warn;
 use serde::Deserialize;
 use tokio::fs;
 
@@ -47,34 +48,67 @@ pub async fn query_latest_revision() -> color_eyre::Result<u64> {
     Ok(*latest)
 }
 
-/// Fetch and cache the Wikipedia page, optionally specifying a revision.
-///
-/// If the revision is omitted, the latest revision is used.
-pub async fn cache_wikipedia_page(
-    cache_dir: impl AsRef<Path>,
-    revision: Option<u64>,
-) -> color_eyre::Result<()> {
+/// Get the latest cached revision.
+pub async fn get_latest_cached_revision(cache_dir: impl AsRef<Path>) -> color_eyre::Result<u64> {
     let cache_dir = cache_dir.as_ref();
 
-    // fetch
-    let url = match revision {
-        Some(rev) => Cow::Owned(format!("{PAGE_URL}&oldid={rev}")),
-        None => Cow::Borrowed(PAGE_URL),
+    let mut max_rev = None;
+
+    let mut read_dir = fs::read_dir(cache_dir).await?;
+    while let Some(entry) = read_dir.next_entry().await? {
+        let file_path = entry.path();
+        let Some(rev) = file_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .and_then(|s| s.parse().ok())
+        else {
+            continue; // ignore files with bad names
+        };
+        if max_rev.unwrap_or_default() < rev {
+            max_rev = Some(rev);
+        }
+    }
+
+    max_rev.ok_or_eyre("No cached pages found")
+}
+
+/// Get the Wikipedia page and cache it. Use cache if available.
+///
+/// If the revision is omitted, the latest revision is checked and used.
+///
+/// Returns the path to the cached page.
+pub async fn get_wikipedia_page_cached(
+    cache_dir: impl AsRef<Path>,
+    revision: Option<u64>,
+) -> color_eyre::Result<PathBuf> {
+    let cache_dir = cache_dir.as_ref();
+
+    // get revision
+    let rev_id = match revision {
+        Some(r) => r,
+        None => match query_latest_revision().await {
+            Ok(r) => r,
+            Err(err) => {
+                warn!("Failed to query the latest revision: {err}");
+                warn!("Will attempt to use the newest cached page");
+                get_latest_cached_revision(cache_dir).await?
+            }
+        },
     };
-    let page_bytes = reqwest::get(url.as_ref())
-        .await?
-        .error_for_status()?
-        .bytes()
-        .await?;
+
+    // use cached if exists
+    let page_path = cache_dir.join(format!("{rev_id}.html"));
+    if page_path.exists() {
+        return Ok(page_path);
+    }
+
+    // fetch
+    let url = format!("{PAGE_URL}&oldid={rev_id}");
+    let page_bytes = reqwest::get(url).await?.error_for_status()?.bytes().await?;
 
     // cache
     fs::create_dir_all(&cache_dir).await?;
+    fs::write(&page_path, page_bytes).await?;
 
-    let rev_id = match revision {
-        Some(rev) => rev.to_string(),
-        None => "latest".to_string(),
-    };
-    fs::write(cache_dir.join(format!("{rev_id}.html")), page_bytes).await?;
-
-    Ok(())
+    Ok(page_path)
 }

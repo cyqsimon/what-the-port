@@ -2,7 +2,7 @@ use clap::Parser;
 use color_eyre::eyre::OptionExt;
 use tokio::fs;
 
-use crate::{cli::CliArgs, parse::parse_page, update::cache_wikipedia_page};
+use crate::{cli::CliArgs, parse::parse_page, update::get_wikipedia_page_cached};
 
 mod cli;
 mod display;
@@ -13,10 +13,11 @@ mod update;
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     let CliArgs {
+        port,
+        revision,
         show_links,
         show_references,
         json_output,
-        port,
         verbosity,
     } = CliArgs::parse();
 
@@ -25,12 +26,9 @@ async fn main() -> color_eyre::Result<()> {
         .ok_or_eyre("Cannot determine your home directory")?
         .cache_dir()
         .to_owned();
-    let cache_page_path = cache_dir.join("latest.html"); // IMPRV: don't hardcode this
 
-    // cache
-    if !cache_page_path.exists() {
-        cache_wikipedia_page(&cache_dir, None).await?;
-    }
+    // get page
+    let cache_page_path = get_wikipedia_page_cached(&cache_dir, revision).await?;
 
     // parse
     let page = fs::read_to_string(cache_page_path).await?;
