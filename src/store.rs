@@ -95,14 +95,6 @@ impl PortType {
     pub fn is_unused(&self) -> bool {
         matches!(self, Self::Unused)
     }
-    pub fn opt_show(&self, label: &str) -> Option<String> {
-        match self {
-            Self::Unused => None,
-            Self::Yes | Self::Unofficial | Self::Assigned | Self::No | Self::Reserved => {
-                Some(format!("{label}: {self}"))
-            }
-        }
-    }
 }
 
 /// Records a use case of a range of ports.
