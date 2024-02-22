@@ -41,7 +41,7 @@ impl<'a> fmt::Display for PortInfoOutput<'a> {
         if use_cases.is_empty() {
             return write!(
                 f,
-                "Port {p} is a {c} port with no known use cases",
+                "  Port {p} is a {c} port with no known use cases",
                 p = color!(port, Red),
                 c = color!(category, Blue),
             );
@@ -50,12 +50,12 @@ impl<'a> fmt::Display for PortInfoOutput<'a> {
         let use_cases_str: String = use_cases
             .iter()
             .enumerate()
-            .map(|(i, use_case)| format!("{}: {use_case}", i + 1))
+            .map(|(i, use_case)| format!("    {}: {use_case}", i + 1))
             .join("\n");
         let count = use_cases.len();
         write!(
             f,
-            "Port {p} is a {c} port with {count} known use {case_form}\n{use_cases_str}",
+            "  Port {p} is a {c} port with {count} known use {case_form}\n{use_cases_str}",
             p = color!(port, Green),
             c = color!(category, Blue),
             case_form = if count == 1 { "case" } else { "cases" },
@@ -124,6 +124,6 @@ impl<'a> fmt::Display for PortUseCase<'a> {
         push_proto!(dccp, "DCCP");
         let protocol_types = buf.join(", ");
 
-        write!(f, "{description}\n\t{protocol_types}")
+        write!(f, "{description}\n        {protocol_types}",)
     }
 }
