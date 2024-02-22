@@ -4,10 +4,10 @@ use color_eyre::eyre::{bail, OptionExt};
 use itertools::Itertools;
 use scraper::{ElementRef, Html, Node, Selector};
 
-use crate::store::{PortInfo, PortType};
+use crate::store::{PortDatabase, PortRangeInfo, PortType};
 
 /// Parse the Wikipedia port list page from its HTML source.
-pub fn parse_page(html_str: &str) -> color_eyre::Result<Vec<PortInfo>> {
+pub fn parse_page(html_str: &str) -> color_eyre::Result<PortDatabase> {
     let document = Html::parse_document(html_str);
 
     let table_selector = Selector::parse(".wikitable.sortable").unwrap();
@@ -20,11 +20,11 @@ pub fn parse_page(html_str: &str) -> color_eyre::Result<Vec<PortInfo>> {
         .flatten()
         .collect_vec();
 
-    Ok(list)
+    Ok(PortDatabase(list))
 }
 
 /// Parse a table that contains a list of ports with their descriptions.
-fn parse_table(table: ElementRef<'_>) -> color_eyre::Result<Vec<PortInfo>> {
+fn parse_table(table: ElementRef<'_>) -> color_eyre::Result<Vec<PortRangeInfo>> {
     // sanity check
     if table.value().name() != "table" {
         bail!("A port table should be a `table` element")
@@ -126,7 +126,7 @@ fn parse_port_range(cell: ElementRef<'_>) -> color_eyre::Result<(RangeInclusive<
 fn parse_row_info<'a, I>(
     port_range: RangeInclusive<u16>,
     mut cells: I,
-) -> color_eyre::Result<PortInfo>
+) -> color_eyre::Result<PortRangeInfo>
 where
     I: DoubleEndedIterator<Item = ElementRef<'a>>,
 {
@@ -152,7 +152,7 @@ where
         }
     }
 
-    Ok(PortInfo {
+    Ok(PortRangeInfo {
         number: port_range,
         category,
         tcp_type: port_types[0],

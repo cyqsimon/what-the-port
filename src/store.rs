@@ -1,12 +1,19 @@
 use std::ops::RangeInclusive;
 
 use color_eyre::eyre::bail;
+use itertools::Itertools;
 use scraper::ElementRef;
+use serde::Serialize;
 
-use crate::cli::{Port, SupportedProtocol};
+use crate::{
+    cli::{PortSelection, SupportedProtocol},
+    display::PortInfoOutput,
+};
 
 /// The type of port, as classified by Wikipedia.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, strum::Display, Serialize)]
+#[strum(serialize_all = "kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum PortCategory {
     /// 0 to 1023.
     WellKnown,
@@ -43,7 +50,8 @@ impl TryFrom<&RangeInclusive<u16>> for PortCategory {
 }
 
 /// The port type as listed by Wikipedia.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, strum::Display, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum PortType {
     /// Described protocol is not used.
     Unused,
@@ -84,13 +92,24 @@ impl TryFrom<ElementRef<'_>> for PortType {
     }
 }
 impl PortType {
-    pub fn is_used(&self) -> bool {
-        !matches!(self, Self::Unused)
+    pub fn is_unused(&self) -> bool {
+        matches!(self, Self::Unused)
+    }
+    pub fn opt_show(&self, label: &str) -> Option<String> {
+        match self {
+            Self::Unused => None,
+            Self::Yes | Self::Unofficial | Self::Assigned | Self::No | Self::Reserved => {
+                Some(format!("{label}: {self}"))
+            }
+        }
     }
 }
 
+/// Records a use case of a range of ports.
+///
+/// There may be multiple use cases for the same range of ports.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PortInfo {
+pub struct PortRangeInfo {
     pub number: RangeInclusive<u16>,
     pub category: PortCategory,
     pub tcp_type: PortType,
@@ -99,9 +118,9 @@ pub struct PortInfo {
     pub dccp_type: PortType,
     pub description: String,
 }
-impl PortInfo {
+impl PortRangeInfo {
     /// Whether this port matches the user's requested port and should be shown.
-    pub fn matches_request(&self, req: Port) -> bool {
+    pub fn matches_request(&self, req: PortSelection) -> bool {
         use SupportedProtocol as P;
 
         if !self.number.contains(&req.number) {
@@ -109,10 +128,27 @@ impl PortInfo {
         }
         match req.protocol {
             P::Any => true,
-            P::Tcp => self.tcp_type.is_used(),
-            P::Udp => self.udp_type.is_used(),
-            P::Sctp => self.sctp_type.is_used(),
-            P::Dccp => self.dccp_type.is_used(),
+            P::Tcp => !self.tcp_type.is_unused(),
+            P::Udp => !self.udp_type.is_unused(),
+            P::Sctp => !self.sctp_type.is_unused(),
+            P::Dccp => !self.dccp_type.is_unused(),
         }
+    }
+}
+
+/// Records all known use cases for all known ports.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PortDatabase(pub Vec<PortRangeInfo>);
+impl PortDatabase {
+    pub fn query(&self, req: PortSelection) -> PortInfoOutput<'_> {
+        let category = req.number.into();
+        let use_cases = self
+            .0
+            .iter()
+            .filter(|p| p.matches_request(req))
+            .map_into()
+            .collect();
+
+        PortInfoOutput { port: req, category, use_cases }
     }
 }

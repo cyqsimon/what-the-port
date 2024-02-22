@@ -2,6 +2,7 @@ use std::{fmt, str::FromStr};
 
 use clap::Parser;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
+use serde_with::SerializeDisplay;
 
 #[derive(Clone, Debug, Parser)]
 #[command(author, version)]
@@ -16,27 +17,27 @@ pub struct CliArgs {
     pub json_output: bool,
 
     #[arg(index = 1, value_name = "PORT")]
-    pub port: Port,
+    pub port: PortSelection,
 
     #[command(flatten)]
     pub verbosity: Verbosity<InfoLevel>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Port {
+#[derive(Copy, Clone, Debug, PartialEq, Eq, SerializeDisplay)]
+pub struct PortSelection {
     pub number: u16,
     pub protocol: SupportedProtocol,
 }
-impl fmt::Display for Port {
+impl fmt::Display for PortSelection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Port { number, protocol } = self;
+        let PortSelection { number, protocol } = self;
         match protocol {
             SupportedProtocol::Any => write!(f, "{number}"),
             proto => write!(f, "{number}/{proto}"),
         }
     }
 }
-impl FromStr for Port {
+impl FromStr for PortSelection {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
