@@ -38,8 +38,10 @@ impl From<HistoryApiResponse> for RevisionList {
 struct RevisionList(Vec<u64>);
 
 /// Query Wikipedia to find out the ID of the latest page revision.
-pub async fn query_latest_revision() -> color_eyre::Result<u64> {
-    let list: RevisionList = reqwest::get(HISTORY_API_URL)
+pub async fn query_latest_revision(client: &reqwest::Client) -> color_eyre::Result<u64> {
+    let list: RevisionList = client
+        .get(HISTORY_API_URL)
+        .send()
         .await?
         .error_for_status()?
         .json()
@@ -79,6 +81,7 @@ pub async fn get_latest_cached_revision(cache_dir: impl AsRef<Path>) -> color_ey
 /// Returns the path to the cached page.
 pub async fn get_wikipedia_page_cached(
     cache_dir: impl AsRef<Path>,
+    client: &reqwest::Client,
     revision: Option<u64>,
 ) -> color_eyre::Result<PathBuf> {
     let cache_dir = cache_dir.as_ref();
@@ -86,7 +89,7 @@ pub async fn get_wikipedia_page_cached(
     // get revision
     let rev_id = match revision {
         Some(r) => r,
-        None => match query_latest_revision().await {
+        None => match query_latest_revision(&client).await {
             Ok(r) => r,
             Err(err) => {
                 warn!("Failed to query the latest revision: {err}");
@@ -104,7 +107,13 @@ pub async fn get_wikipedia_page_cached(
 
     // fetch
     let url = format!("{PAGE_URL}&oldid={rev_id}");
-    let page_bytes = reqwest::get(url).await?.error_for_status()?.bytes().await?;
+    let page_bytes = client
+        .get(url)
+        .send()
+        .await?
+        .error_for_status()?
+        .bytes()
+        .await?;
 
     // cache
     fs::create_dir_all(&cache_dir).await?;

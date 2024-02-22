@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use clap::Parser;
 use color_eyre::eyre::OptionExt;
 use simplelog::{ColorChoice, TermLogger, TerminalMode};
@@ -40,8 +42,14 @@ async fn main() -> color_eyre::Result<()> {
         .cache_dir()
         .to_owned();
 
+    // build HTTP client
+    let client = reqwest::ClientBuilder::new()
+        .connection_verbose(true)
+        .timeout(Duration::from_secs(10))
+        .build()?;
+
     // get page
-    let cache_page_path = get_wikipedia_page_cached(&cache_dir, revision).await?;
+    let cache_page_path = get_wikipedia_page_cached(&cache_dir, &client, revision).await?;
 
     // parse
     let page = fs::read_to_string(cache_page_path).await?;
