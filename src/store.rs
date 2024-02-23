@@ -76,7 +76,7 @@ impl TryFrom<ElementRef<'_>> for PortType {
         }
 
         for txt in cell.text() {
-            let matched = match txt {
+            let matched = match txt.trim() {
                 "Yes" => Some(Self::Yes),
                 "Unofficial" => Some(Self::Unofficial),
                 "Assigned" => Some(Self::Assigned),
