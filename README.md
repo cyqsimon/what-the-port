@@ -2,6 +2,8 @@
 
 Quickly lookup what a port is used for.
 
+[![Demo](https://asciinema.org/a/eZpsErATwmm82hcHxrKxROz5C.svg)](https://asciinema.org/a/eZpsErATwmm82hcHxrKxROz5C)
+
 ## Install
 
 This tool is very new, so it hasn't been packaged in many places.
@@ -24,7 +26,7 @@ and presents it after formatting the data. There is really nothing special about
 
 The main sell, as is the case for many CLI tools, is that of convenience.
 Instead of having to open up a browser, navigate to the page and scroll or search,
-you can do it from the comfort of your terminal with one command. 
+you can do it from the comfort of your terminal with one command.
 There is also the additional benefit that you can now do this lookup offline thanks to caching.
 
 Of course, the intrinsic issue with any scraper is that it isn't particularly resilient.
