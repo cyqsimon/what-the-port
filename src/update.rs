@@ -38,7 +38,7 @@ impl From<HistoryApiResponse> for RevisionList {
 struct RevisionList(Vec<u64>);
 
 /// Query Wikipedia to find out the ID of the latest page revision.
-pub async fn query_latest_revision(client: &reqwest::Client) -> color_eyre::Result<u64> {
+async fn query_latest_revision(client: &reqwest::Client) -> color_eyre::Result<u64> {
     let list: RevisionList = client
         .get(HISTORY_API_URL)
         .send()
@@ -51,7 +51,7 @@ pub async fn query_latest_revision(client: &reqwest::Client) -> color_eyre::Resu
 }
 
 /// Get the latest cached revision.
-pub async fn get_latest_cached_revision(cache_dir: impl AsRef<Path>) -> color_eyre::Result<u64> {
+async fn get_latest_cached_revision(cache_dir: impl AsRef<Path>) -> color_eyre::Result<u64> {
     let cache_dir = cache_dir.as_ref();
 
     let mut max_rev = None;
@@ -74,39 +74,22 @@ pub async fn get_latest_cached_revision(cache_dir: impl AsRef<Path>) -> color_ey
     max_rev.ok_or_eyre("No cached pages found")
 }
 
-/// Get the Wikipedia page and cache it. Use cache if available.
-///
-/// If the revision is omitted, the latest revision is checked and used.
-///
-/// Returns the path to the cached page.
-pub async fn get_wikipedia_page_cached(
+/// Cache the specified revision if it does not exist already.
+async fn ensure_cached(
     cache_dir: impl AsRef<Path>,
     client: &reqwest::Client,
-    revision: Option<u64>,
+    revision: u64,
 ) -> color_eyre::Result<PathBuf> {
     let cache_dir = cache_dir.as_ref();
 
-    // get revision
-    let rev_id = match revision {
-        Some(r) => r,
-        None => match query_latest_revision(&client).await {
-            Ok(r) => r,
-            Err(err) => {
-                warn!("Failed to query the latest revision: {err}");
-                warn!("Will attempt to use the newest cached page");
-                get_latest_cached_revision(cache_dir).await?
-            }
-        },
-    };
-
     // use cached if exists
-    let page_path = cache_dir.join(format!("{rev_id}.html"));
+    let page_path = cache_dir.join(format!("{revision}.html"));
     if page_path.exists() {
         return Ok(page_path);
     }
 
     // fetch
-    let url = format!("{PAGE_URL}&oldid={rev_id}");
+    let url = format!("{PAGE_URL}&oldid={revision}");
     let page_bytes = client
         .get(url)
         .send()
@@ -118,6 +101,51 @@ pub async fn get_wikipedia_page_cached(
     // cache
     fs::create_dir_all(&cache_dir).await?;
     fs::write(&page_path, page_bytes).await?;
+
+    Ok(page_path)
+}
+
+/// Get the Wikipedia page and cache it. Use cache when available.
+///
+/// This function is intended to provide the best experience for the user. Therefore,
+/// - if a revision is provided, we only return `Ok` when the exact revision is accessible.
+/// - if a revision is absent, we return the newest accessible revision, and only error
+///     when nothing is available.
+///
+/// Returns the path to the cached page.
+pub async fn get_wikipedia_page_cached(
+    cache_dir: impl AsRef<Path>,
+    client: &reqwest::Client,
+    revision: Option<u64>,
+) -> color_eyre::Result<PathBuf> {
+    let cache_dir = cache_dir.as_ref();
+
+    let page_path = match revision {
+        Some(rev_id) => ensure_cached(cache_dir, client, rev_id).await?,
+        None => {
+            let latest_page_path = match query_latest_revision(client).await {
+                Ok(r) => match ensure_cached(cache_dir, client, r).await {
+                    Ok(path) => Some(path),
+                    Err(err) => {
+                        warn!("Successfully queried the latest revision ID ({r}), but fetch failed: {err}");
+                        None
+                    }
+                },
+                Err(err) => {
+                    warn!("Failed to query the latest revision: {err}");
+                    None
+                }
+            };
+            match latest_page_path {
+                Some(path) => path,
+                None => {
+                    warn!("Will attempt to use the newest cached page");
+                    let local_rev = get_latest_cached_revision(cache_dir).await?;
+                    ensure_cached(cache_dir, client, local_rev).await?
+                }
+            }
+        }
+    };
 
     Ok(page_path)
 }
