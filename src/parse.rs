@@ -224,7 +224,7 @@ impl RichTextSpan {
                     // plain text
                     Node::Text(txt) => {
                         // many (if not all) description cells have a trailing newline
-                        let text = txt.replace("\n", "");
+                        let text = txt.replace('\n', "");
                         if text.is_empty() {
                             vec![]
                         } else {
@@ -283,7 +283,7 @@ impl RichTextSpan {
                                 }) else {
                                     bail!("Encountered a reference without a link");
                                 };
-                                let ref_id = get_link_from_element(&link_el)?
+                                let ref_id = get_link_from_element(link_el)?
                                     .trim_start_matches('#')
                                     .into();
                                 break 'el vec![Span::Reference { number, ref_id }];
@@ -298,7 +298,7 @@ impl RichTextSpan {
                                 }) else {
                                     bail!("Encountered a note without a link");
                                 };
-                                let note_id = get_link_from_element(&link_el)?
+                                let note_id = get_link_from_element(link_el)?
                                     .trim_start_matches('#')
                                     .into();
                                 break 'el vec![Span::Note { number, note_id }];

@@ -43,7 +43,7 @@ async fn query_latest_revision(client: &reqwest::Client) -> color_eyre::Result<u
         .error_for_status()?
         .json()
         .await?;
-    let latest = list.0.get(0).ok_or_eyre("Revision history is empty")?;
+    let latest = list.0.first().ok_or_eyre("Revision history is empty")?;
     Ok(*latest)
 }
 
