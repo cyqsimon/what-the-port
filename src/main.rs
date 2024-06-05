@@ -8,6 +8,7 @@ use tokio::fs;
 use crate::{cli::CliArgs, parse::parse_page, update::get_wikipedia_page_cached};
 
 mod cli;
+mod consts;
 mod display;
 mod parse;
 mod store;

@@ -5,9 +5,7 @@ use log::warn;
 use serde::Deserialize;
 use tokio::fs;
 
-const HISTORY_API_URL: &str =
-    "https://api.wikimedia.org/core/v1/wikipedia/en/page/List_of_TCP_and_UDP_port_numbers/history";
-const PAGE_URL: &str = "https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers";
+use crate::consts::{HISTORY_API_URL, PAGE_URL};
 
 /// Representation of the revision number in history API's response.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
