@@ -133,9 +133,6 @@ fn parse_row_info<'a, I>(
 where
     I: DoubleEndedIterator<Item = ElementRef<'a>>,
 {
-    // category
-    let category = (&port_range).try_into()?;
-
     // description
     let description_cell = cells.next_back().ok_or_eyre("Row has no cells")?;
     let rich_description = parse_rich_text_cell(description_cell)?;
@@ -156,7 +153,6 @@ where
 
     Ok(PortRangeInfo {
         number: port_range,
-        category,
         tcp_type: port_types[0],
         udp_type: port_types[1],
         sctp_type: port_types[2],

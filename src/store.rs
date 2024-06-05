@@ -103,7 +103,6 @@ impl PortType {
 #[derive(Clone, Debug)]
 pub struct PortRangeInfo {
     pub number: RangeInclusive<u16>,
-    pub category: PortCategory,
     pub tcp_type: PortType,
     pub udp_type: PortType,
     pub sctp_type: PortType,
