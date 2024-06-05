@@ -7,7 +7,7 @@ homepage = "https://github.com/cyqsimon/what-the-port"
 keywords = ["cli", "tool", "lookup", "port"]
 license = "AGPL-3.0-or-later"
 name = "what-the-port"
-rust-version = "1.70.0"
+rust-version = "1.74.0"
 version = "0.1.0"
 
 [[bin]]
