@@ -32,6 +32,6 @@ There is also the additional benefit that you can now do this lookup offline tha
 Of course, the intrinsic issue with any scraper is that it isn't particularly resilient.
 Wikipedia is intended for human consumption first and foremost, not for a program.
 I fully expect this tool to have issues regularly, when the Wikipedia page gets updated
-in an unhandled way.Therefore most aspects of this tool are written to be fail-safe,
+in an unhandled way. Therefore most aspects of this tool are written to be fail-safe,
 meaning it will try its best to produce usable output. If you encounter errors or warnings,
 please report them as issues.
