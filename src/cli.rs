@@ -7,18 +7,30 @@ use serde_with::SerializeDisplay;
 #[derive(Clone, Debug, Parser)]
 #[command(author, version)]
 pub struct CliArgs {
+    /// Which port would you like to learn about?
+    ///
+    /// You can either specify a port number, or a number-protocol pair.
+    ///
+    /// For example: `80`, `443/udp`.
     #[arg(index = 1, value_name = "PORT")]
     pub port: PortSelection,
 
+    /// Which Wikipedia page revision you would like to use.
+    ///
+    /// If unspecified, we will try to fetch the latest.
+    /// If that fails, we will use the latest revision from local cache.
     #[arg(long = "revision", visible_alias = "rev")]
     pub revision: Option<u64>,
 
-    #[arg(long = "links", alias = "link")]
+    /// Show links in the port description.
+    #[arg(short = 'l', long = "links", alias = "link")]
     pub show_links: bool,
 
-    #[arg(long = "references", visible_aliases = ["ref", "notes"], aliases = ["reference", "note"])]
+    /// Show notes and references in the port description.
+    #[arg(short = 'r', long = "references", visible_aliases = ["refs", "notes"], aliases = ["reference", "ref", "note"])]
     pub show_notes_and_references: bool,
 
+    /// Use machine-friendly JSON output.
     #[arg(short = 'j', long = "json")]
     pub json_output: bool,
 
