@@ -91,10 +91,12 @@ pub struct PortUseCase<'a> {
     /// Links extracted from rich description, depending on user options.
     ///
     /// Format: `(id, url)`.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     links: Vec<(String, String)>,
     /// Notes and references extracted from rich description, depending on user options.
     ///
     /// Format: `(id, url)`.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     notes_and_refs: Vec<(String, String)>,
     /// The full description parsed, as provided by Wikipedia.
     rich_description: &'a [RichTextSpan],
