@@ -4,10 +4,13 @@ Quickly lookup what a port is used for.
 
 ## Install
 
-This tool is very new, so it hasn't been packaged anywhere yet.
+This tool is very new, so it hasn't been packaged in many places.
 
 If you would like to help package it, please do so and submit an issue/PR so we can list it here.
 
+### AUR
+
+`paru -S what-the-port`
 
 ### Build locally
 
