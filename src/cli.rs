@@ -13,11 +13,11 @@ pub struct CliArgs {
     #[arg(long = "revision", visible_alias = "rev")]
     pub revision: Option<u64>,
 
-    #[arg(long = "link")]
+    #[arg(long = "links", alias = "link")]
     pub show_links: bool,
 
-    #[arg(long = "reference", visible_alias = "ref")]
-    pub show_references: bool,
+    #[arg(long = "references", visible_aliases = ["ref", "notes"], aliases = ["reference", "note"])]
+    pub show_notes_and_references: bool,
 
     #[arg(short = 'j', long = "json")]
     pub json_output: bool,

@@ -20,7 +20,7 @@ async fn main() -> color_eyre::Result<()> {
         port,
         revision,
         show_links,
-        show_references,
+        show_notes_and_references,
         json_output,
         verbosity,
     } = CliArgs::parse();
