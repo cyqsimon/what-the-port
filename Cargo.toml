@@ -1,8 +1,14 @@
 [package]
-name = "what-the-port"
-version = "0.1.0"
+authors = ["cyqsimon"]
+categories = ["network-programming", "command-line-utilities"]
+description = "Quickly lookup what a port is used for."
 edition = "2021"
+homepage = "https://github.com/cyqsimon/what-the-port"
+keywords = ["cli", "tool", "lookup", "port"]
+license = "AGPL-3.0-or-later"
+name = "what-the-port"
 rust-version = "1.70.0"
+version = "0.1.0"
 
 [[bin]]
 name = "wtp"
