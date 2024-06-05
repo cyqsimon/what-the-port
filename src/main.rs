@@ -57,7 +57,7 @@ async fn main() -> color_eyre::Result<()> {
     let db = parse_page(&page)?;
 
     // query and print
-    let output = db.query(port);
+    let output = db.query(port, show_links, show_notes_and_references);
     let output_str = if json_output {
         serde_json::to_string(&output)?
     } else {

@@ -1,13 +1,13 @@
 use std::ops::RangeInclusive;
 
 use color_eyre::eyre::bail;
-use itertools::Itertools;
 use scraper::ElementRef;
 use serde::Serialize;
 
 use crate::{
     cli::{PortSelection, SupportedProtocol},
-    display::PortInfoOutput,
+    display::{PortInfoOutput, PortUseCase},
+    parse::RichTextSpan,
 };
 
 /// The type of port, as classified by Wikipedia.
@@ -100,7 +100,7 @@ impl PortType {
 /// Records a use case of a range of ports.
 ///
 /// There may be multiple use cases for the same range of ports.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct PortRangeInfo {
     pub number: RangeInclusive<u16>,
     pub category: PortCategory,
@@ -108,7 +108,7 @@ pub struct PortRangeInfo {
     pub udp_type: PortType,
     pub sctp_type: PortType,
     pub dccp_type: PortType,
-    pub description: String,
+    pub rich_description: Vec<RichTextSpan>,
 }
 impl PortRangeInfo {
     /// Whether this port matches the user's requested port and should be shown.
@@ -129,16 +129,21 @@ impl PortRangeInfo {
 }
 
 /// Records all known use cases for all known ports.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct PortDatabase(pub Vec<PortRangeInfo>);
 impl PortDatabase {
-    pub fn query(&self, req: PortSelection) -> PortInfoOutput<'_> {
+    pub fn query(
+        &self,
+        req: PortSelection,
+        show_links: bool,
+        show_notes_and_references: bool,
+    ) -> PortInfoOutput<'_> {
         let category = req.number.into();
         let use_cases = self
             .0
             .iter()
             .filter(|p| p.matches_request(req))
-            .map_into()
+            .map(|p| PortUseCase::from_with_options(p, show_links, show_notes_and_references))
             .collect();
 
         PortInfoOutput { port: req, category, use_cases }
