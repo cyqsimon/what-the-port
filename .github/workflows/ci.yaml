@@ -44,6 +44,8 @@ jobs:
           components: clippy, rustfmt
 
       - name: Check formatting
+        # older rustfmt sometimes produce non-matching output
+        if: matrix.rust == 'stable' || matrix.rust == 'nightly'
         run: cargo fmt --all -- --check
 
       - name: Run clippy
