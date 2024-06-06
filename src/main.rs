@@ -3,9 +3,12 @@ use std::time::Duration;
 use clap::Parser;
 use color_eyre::eyre::OptionExt;
 use simplelog::{ColorChoice, TermLogger, TerminalMode};
-use tokio::fs;
 
-use crate::{cli::CliArgs, parse::parse_page, update::get_wikipedia_page_cached};
+use crate::{
+    cli::CliArgs,
+    parse::parse_page,
+    update::{get_wikipedia_page_offline, get_wikipedia_page_online},
+};
 
 mod cli;
 mod consts;
@@ -19,6 +22,7 @@ async fn main() -> color_eyre::Result<()> {
     let CliArgs {
         port,
         revision,
+        offline,
         show_links,
         show_notes_and_references,
         json_output,
@@ -43,17 +47,18 @@ async fn main() -> color_eyre::Result<()> {
         .cache_dir()
         .to_owned();
 
-    // build HTTP client
-    let client = reqwest::ClientBuilder::new()
-        .connection_verbose(true)
-        .timeout(Duration::from_secs(10))
-        .build()?;
-
     // get page
-    let cache_page_path = get_wikipedia_page_cached(&cache_dir, &client, revision).await?;
+    let page = if offline {
+        get_wikipedia_page_offline(&cache_dir, revision).await?
+    } else {
+        let client = reqwest::ClientBuilder::new()
+            .connection_verbose(true)
+            .timeout(Duration::from_secs(10))
+            .build()?;
+        get_wikipedia_page_online(&cache_dir, &client, revision).await?
+    };
 
     // parse
-    let page = fs::read_to_string(cache_page_path).await?;
     let db = parse_page(&page)?;
 
     // query and print

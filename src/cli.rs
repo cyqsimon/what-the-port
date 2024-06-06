@@ -22,6 +22,10 @@ pub struct CliArgs {
     #[arg(long = "revision", visible_alias = "rev")]
     pub revision: Option<u64>,
 
+    /// Disable all network access and only use local cache.
+    #[arg(short = 'o', long = "offline")]
+    pub offline: bool,
+
     /// Show links in the port description.
     #[arg(short = 'l', long = "links", alias = "link")]
     pub show_links: bool,

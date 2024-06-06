@@ -71,6 +71,13 @@ async fn get_latest_cached_revision(cache_dir: impl AsRef<Path>) -> color_eyre::
     max_rev.ok_or_eyre("No cached pages found")
 }
 
+/// Get the local path for a revision.
+///
+/// This function does not perform any verification that this path exists.
+fn get_revision_path(cache_dir: impl AsRef<Path>, revision: u64) -> PathBuf {
+    cache_dir.as_ref().join(format!("{revision}.html"))
+}
+
 /// Cache the specified revision if it does not exist already.
 async fn ensure_cached(
     cache_dir: impl AsRef<Path>,
@@ -80,7 +87,7 @@ async fn ensure_cached(
     let cache_dir = cache_dir.as_ref();
 
     // use cached if exists
-    let page_path = cache_dir.join(format!("{revision}.html"));
+    let page_path = get_revision_path(cache_dir, revision);
     if page_path.exists() {
         return Ok(page_path);
     }
@@ -102,19 +109,41 @@ async fn ensure_cached(
     Ok(page_path)
 }
 
-/// Get the Wikipedia page and cache it. Use cache when available.
+/// Get the Wikipedia page with network disabled. Will error if no cached page is available.
+///
+/// If a revision is absent, we return the newest available revision.
+///
+/// Returns the page as string.
+pub async fn get_wikipedia_page_offline(
+    cache_dir: impl AsRef<Path>,
+    revision: Option<u64>,
+) -> color_eyre::Result<String> {
+    let cache_dir = cache_dir.as_ref();
+
+    let revision = match revision {
+        Some(r) => r,
+        None => get_latest_cached_revision(cache_dir).await?,
+    };
+
+    let page_path = get_revision_path(cache_dir, revision);
+    let page_str = fs::read_to_string(page_path).await?;
+
+    Ok(page_str)
+}
+
+/// Get the Wikipedia page with network enabled. Cache is written or read when appropriate.
 ///
 /// This function is intended to provide the best experience for the user. Therefore,
 /// - if a revision is provided, we only return `Ok` when the exact revision is accessible.
 /// - if a revision is absent, we return the newest accessible revision, and only error
 ///     when nothing is available.
 ///
-/// Returns the path to the cached page.
-pub async fn get_wikipedia_page_cached(
+/// Returns the page as string.
+pub async fn get_wikipedia_page_online(
     cache_dir: impl AsRef<Path>,
     client: &reqwest::Client,
     revision: Option<u64>,
-) -> color_eyre::Result<PathBuf> {
+) -> color_eyre::Result<String> {
     let cache_dir = cache_dir.as_ref();
 
     let page_path = match revision {
@@ -138,11 +167,12 @@ pub async fn get_wikipedia_page_cached(
                 None => {
                     warn!("Will attempt to use the newest cached page");
                     let local_rev = get_latest_cached_revision(cache_dir).await?;
-                    ensure_cached(cache_dir, client, local_rev).await?
+                    get_revision_path(cache_dir, local_rev)
                 }
             }
         }
     };
+    let page_str = fs::read_to_string(page_path).await?;
 
-    Ok(page_path)
+    Ok(page_str)
 }
