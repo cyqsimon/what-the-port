@@ -65,14 +65,14 @@ impl<'a> fmt::Display for SearchOutput<'a> {
 
                 let subtitle = if p.number.clone().count() == 1 {
                     format!(
-                        "Port {p} is a {c} port with {case_count} known use {case_form}",
+                        "Port {p} is a {c} port with {case_count} matched use {case_form}",
                         p = color!(p.number.start(), Green),
                         c = color!(category, Blue),
                         case_form = if case_count == 1 { "case" } else { "cases" },
                     )
                 } else {
                     format!(
-                        "Port {p} are {c} ports with {case_count} known use {case_form}",
+                        "Port {p} are {c} ports with {case_count} matched use {case_form}",
                         p = color!(format!("{}-{}", p.number.start(), p.number.end()), Green),
                         c = color!(category, Blue),
                         case_form = if case_count == 1 { "case" } else { "cases" },
