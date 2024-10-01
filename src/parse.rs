@@ -329,6 +329,55 @@ impl RichTextSpan {
             }]
         })
     }
+
+    /// Get the displayed text, excluding all superscripts and subscripts.
+    pub fn normal_text(&self) -> Option<&str> {
+        match self {
+            Self::Text { text } => Some(text),
+            Self::SiteLink { text, .. }
+            | Self::SiteLinkNonExistent { text, .. }
+            | Self::ExternalLink { text, .. } => Some(text),
+            Self::Note { .. } | Self::Reference { .. } | Self::Annotation { .. } => None,
+            Self::Unknown { text, .. } => Some(text),
+        }
+    }
+
+    /// Check if this span contains the search term.
+    ///
+    /// This match is case-insensitive.
+    pub fn matches_search(
+        &self,
+        search: impl AsRef<str>,
+        include_links: bool,
+        include_notes_and_references: bool,
+    ) -> bool {
+        let search = search.as_ref().to_lowercase();
+
+        // eligible search scope
+        let (text, link) = match self {
+            Self::Text { text } => (Some(text), None),
+            Self::SiteLink { text, link }
+            | Self::SiteLinkNonExistent { text, link }
+            | Self::ExternalLink { text, link } => {
+                // link text is always shown
+                (Some(text), if include_links { Some(link) } else { None })
+            }
+            Self::Note { note_id: id, .. } | Self::Reference { ref_id: id, .. } => {
+                if include_notes_and_references {
+                    (None, Some(id))
+                } else {
+                    (None, None)
+                }
+            }
+            Self::Annotation { .. } => (None, None), // annotations are not helpful
+            Self::Unknown { text, .. } => (Some(text), None),
+        };
+
+        // matches if found anywhere in search scope
+        text.iter()
+            .chain(link.iter())
+            .any(|t| t.to_lowercase().contains(&search))
+    }
 }
 
 pub fn parse_rich_text_cell(cell: ElementRef<'_>) -> color_eyre::Result<Vec<RichTextSpan>> {

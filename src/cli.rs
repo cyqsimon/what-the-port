@@ -1,4 +1,4 @@
-use std::{fmt, str::FromStr};
+use std::{convert::Infallible, fmt, str::FromStr};
 
 use clap::Parser;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
@@ -7,13 +7,13 @@ use serde_with::SerializeDisplay;
 #[derive(Clone, Debug, Parser)]
 #[command(author, version)]
 pub struct CliArgs {
-    /// Which port would you like to learn about?
+    /// Plain text search term or a port specification.
     ///
-    /// You can either specify a port number, or a number-protocol pair.
-    ///
-    /// For example: `80`, `443/udp`.
-    #[arg(index = 1, value_name = "PORT")]
-    pub port: PortSelection,
+    /// ## Port specification
+    /// - either a port number: `80`
+    /// - or a number-protocol pair: `443/udp`
+    #[arg(index = 1, value_name = "QUERY")]
+    pub query: UserQuery,
 
     /// Which Wikipedia page revision you would like to use.
     ///
@@ -40,6 +40,34 @@ pub struct CliArgs {
 
     #[command(flatten)]
     pub verbosity: Verbosity<InfoLevel>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum UserQuery {
+    /// User specified a search term.
+    Search(String),
+    /// User specified a port lookup.
+    PortLookup(PortSelection),
+}
+impl fmt::Display for UserQuery {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Search(s) => write!(f, r#"Search: "{s}""#),
+            Self::PortLookup(port) => write!(f, "{port}"),
+        }
+    }
+}
+impl FromStr for UserQuery {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let query = if let Ok(port) = s.parse() {
+            Self::PortLookup(port)
+        } else {
+            Self::Search(s.into())
+        };
+        Ok(query)
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, SerializeDisplay)]

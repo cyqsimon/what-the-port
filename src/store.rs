@@ -1,12 +1,13 @@
 use std::ops::RangeInclusive;
 
 use color_eyre::eyre::bail;
+use itertools::Itertools;
 use scraper::ElementRef;
 use serde::Serialize;
 
 use crate::{
     cli::{PortSelection, SupportedProtocol},
-    display::{PortInfoOutput, PortUseCase},
+    display::{MatchedPort, PortLookupOutput, PortUseCase, SearchOutput},
     parse::RichTextSpan,
 };
 
@@ -111,13 +112,13 @@ pub struct PortRangeInfo {
 }
 impl PortRangeInfo {
     /// Whether this port matches the user's requested port and should be shown.
-    pub fn matches_request(&self, req: PortSelection) -> bool {
+    pub fn matches_port(&self, lookup: PortSelection) -> bool {
         use SupportedProtocol as P;
 
-        if !self.number.contains(&req.number) {
+        if !self.number.contains(&lookup.number) {
             return false;
         }
-        match req.protocol {
+        match lookup.protocol {
             P::Any => true,
             P::Tcp => !self.tcp_type.is_unused(),
             P::Udp => !self.udp_type.is_unused(),
@@ -125,26 +126,102 @@ impl PortRangeInfo {
             P::Dccp => !self.dccp_type.is_unused(),
         }
     }
+
+    /// Check if the description contains the search term.
+    ///
+    /// This match is case-insensitive.
+    pub fn matches_search(
+        &self,
+        search: impl AsRef<str>,
+        include_links: bool,
+        include_notes_and_references: bool,
+    ) -> bool {
+        let search = search.as_ref().to_lowercase();
+
+        // matched if any individual span contains the search term
+        if self
+            .rich_description
+            .iter()
+            .any(|span| span.matches_search(&search, include_links, include_notes_and_references))
+        {
+            return true;
+        }
+
+        // matched if the concatenated normal text contains the search term
+        // this is necessary because a search term could ride on span boundaries
+        // e.g. `foo bar` should match `foo [bar](example.org) baz`
+        let text = self
+            .rich_description
+            .iter()
+            .filter_map(RichTextSpan::normal_text)
+            .map(str::to_lowercase)
+            .join("");
+        if text.contains(&search) {
+            return true;
+        }
+
+        false
+    }
 }
 
 /// Records all known use cases for all known ports.
 #[derive(Clone, Debug)]
 pub struct PortDatabase(pub Vec<PortRangeInfo>);
 impl PortDatabase {
-    pub fn query(
+    pub fn lookup(
         &self,
-        req: PortSelection,
+        lookup: PortSelection,
         show_links: bool,
         show_notes_and_references: bool,
-    ) -> PortInfoOutput<'_> {
-        let category = req.number.into();
+    ) -> PortLookupOutput {
         let use_cases = self
             .0
             .iter()
-            .filter(|p| p.matches_request(req))
+            .filter(|p| p.matches_port(lookup))
             .map(|p| PortUseCase::from_with_options(p, show_links, show_notes_and_references))
+            .collect_vec();
+
+        // note that these use cases may come from different port ranges
+        // because ranges may overlap
+        // e.g. revision 1248795838, port 3479
+
+        let matched = if use_cases.is_empty() {
+            None
+        } else {
+            Some(MatchedPort {
+                number: lookup.number..=lookup.number,
+                use_cases,
+            })
+        };
+        PortLookupOutput { lookup, matched }
+    }
+
+    pub fn search(
+        &self,
+        search: impl AsRef<str>,
+        show_links: bool,
+        show_notes_and_references: bool,
+    ) -> SearchOutput {
+        let search = search.as_ref().to_owned();
+
+        let matched = self
+            .0
+            .iter()
+            .filter(|p| p.matches_search(&search, show_links, show_notes_and_references))
+            .into_group_map_by(|p| &p.number)
+            .into_iter()
+            .map(|(n, info)| {
+                let use_cases = info
+                    .into_iter()
+                    .map(|p| {
+                        PortUseCase::from_with_options(p, show_links, show_notes_and_references)
+                    })
+                    .collect();
+                MatchedPort { number: n.clone(), use_cases }
+            })
+            .sorted_by_key(|p| *p.number.start())
             .collect();
 
-        PortInfoOutput { port: req, category, use_cases }
+        SearchOutput { search, matched }
     }
 }

@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, ops::RangeInclusive};
 
 use itertools::Itertools;
 use owo_colors::OwoColorize;
@@ -33,44 +33,131 @@ macro_rules! style_linked_text {
     }};
 }
 
-/// Structured output data, serialised into either human-readable or machine-readable form.
-#[derive(Clone, Debug, Serialize)]
-pub struct PortInfoOutput<'a> {
-    pub port: PortSelection,
-    pub category: PortCategory,
-    pub use_cases: Vec<PortUseCase<'a>>,
+/// All possible kinds of output, serialisable into either human-readable or
+/// machine-readable form.
+#[derive(Clone, Debug, derive_more::Display, derive_more::From, Serialize)]
+#[serde(tag = "type", content = "result")]
+pub enum Output<'a> {
+    Search(SearchOutput<'a>),
+    PortLookup(PortLookupOutput<'a>),
 }
-impl<'a> fmt::Display for PortInfoOutput<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { port, category, use_cases } = self;
 
-        if use_cases.is_empty() {
+/// Structured output data in response to a general search.
+#[derive(Clone, Debug, Serialize)]
+pub struct SearchOutput<'a> {
+    pub search: String,
+    pub matched: Vec<MatchedPort<'a>>,
+}
+impl<'a> fmt::Display for SearchOutput<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { search, matched } = self;
+
+        if matched.is_empty() {
+            return write!(f, "Found no matches for \"{search}\" among known ports");
+        }
+
+        let matched_str = matched
+            .iter()
+            .map(|p| {
+                let category = PortCategory::from(*p.number.start());
+                let case_count = p.use_cases.len();
+
+                let subtitle = if p.number.clone().count() == 1 {
+                    format!(
+                        "Port {p} is a {c} port with {case_count} known use {case_form}",
+                        p = color!(p.number.start(), Green),
+                        c = color!(category, Blue),
+                        case_form = if case_count == 1 { "case" } else { "cases" },
+                    )
+                } else {
+                    format!(
+                        "Port {p} are {c} ports with {case_count} known use {case_form}",
+                        p = color!(format!("{}-{}", p.number.start(), p.number.end()), Green),
+                        c = color!(category, Blue),
+                        case_form = if case_count == 1 { "case" } else { "cases" },
+                    )
+                };
+                let use_cases_str = p.as_use_cases_str(true, Some("    "), "\n\n");
+                format!("{subtitle}\n\n{use_cases_str}")
+            })
+            .join("\n\n");
+        let port_count = matched.len();
+        let case_count = matched.iter().map(|p| p.use_cases.len()).sum::<usize>();
+
+        write!(
+            f,
+            "Found {port_count} {port_form} with {case_count} use {case_form} matching \"{search}\"\n\n{matched_str}",
+            port_form = if port_count == 1 {
+                "port or port range"
+            } else {
+                "ports or port ranges"
+            },
+            case_form = if case_count == 1 { "case" } else { "cases" },
+        )
+    }
+}
+
+/// Structured output data in response to a port lookup.
+#[derive(Clone, Debug, Serialize)]
+pub struct PortLookupOutput<'a> {
+    pub lookup: PortSelection,
+    pub matched: Option<MatchedPort<'a>>,
+}
+impl<'a> fmt::Display for PortLookupOutput<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let category = PortCategory::from(self.lookup.number);
+
+        let Some(matched) = &self.matched else {
             return write!(
                 f,
                 "Port {p} is a {c} port with no known use cases",
-                p = color!(port, Red),
+                p = color!(self.lookup, Red),
                 c = color!(category, Blue),
             );
-        }
+        };
 
-        let use_cases_str: String = use_cases
-            .iter()
-            .enumerate()
-            .map(|(i, use_case)| {
-                format!("{}: {use_case}", i + 1)
-                    .lines()
-                    .map(|line| format!("    {line}")) // indentation
-                    .join("\n")
-            })
-            .join("\n\n");
-        let count = use_cases.len();
+        let use_cases_str = matched.as_use_cases_str(true, Some("    "), "\n\n");
+        let count = matched.use_cases.len();
         write!(
             f,
             "Port {p} is a {c} port with {count} known use {case_form}\n\n{use_cases_str}",
-            p = color!(port, Green),
+            p = color!(self.lookup, Green),
             c = color!(category, Blue),
             case_form = if count == 1 { "case" } else { "cases" },
         )
+    }
+}
+
+/// Information on a matched port.
+///
+/// The parent struct implementation decides how to display this info.
+#[derive(Clone, Debug, Serialize)]
+pub struct MatchedPort<'a> {
+    pub number: RangeInclusive<u16>,
+    pub use_cases: Vec<PortUseCase<'a>>,
+}
+impl<'a> MatchedPort<'a> {
+    fn as_use_cases_str(
+        &self,
+        numbered: bool,
+        indentation: Option<&str>,
+        case_separator: &str,
+    ) -> String {
+        self.use_cases
+            .iter()
+            .enumerate()
+            .map(|(i, use_case)| {
+                let s = if numbered {
+                    format!("{}: {use_case}", i + 1)
+                } else {
+                    use_case.to_string()
+                };
+                match indentation {
+                    Some(indent) => s.lines().map(|line| format!("{indent}{line}")).join("\n"),
+                    None => s,
+                }
+            })
+            .join(case_separator)
     }
 }
 
@@ -98,7 +185,10 @@ pub struct PortUseCase<'a> {
     /// Format: `(id, url)`.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     notes_and_refs: Vec<(String, String)>,
+
     /// The full description parsed, as provided by Wikipedia.
+    ///
+    /// This is useful for JSON output.
     rich_description: &'a [RichTextSpan],
 }
 impl<'a> fmt::Display for PortUseCase<'a> {

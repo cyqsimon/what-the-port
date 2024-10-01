@@ -5,7 +5,8 @@ use color_eyre::eyre::OptionExt;
 use simplelog::{ColorChoice, TermLogger, TerminalMode};
 
 use crate::{
-    cli::CliArgs,
+    cli::{CliArgs, UserQuery},
+    display::Output,
     parse::parse_page,
     update::{get_wikipedia_page_offline, get_wikipedia_page_online},
 };
@@ -20,7 +21,7 @@ mod update;
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     let CliArgs {
-        port,
+        query,
         revision,
         offline,
         show_links,
@@ -62,7 +63,14 @@ async fn main() -> color_eyre::Result<()> {
     let db = parse_page(&page)?;
 
     // query and print
-    let output = db.query(port, show_links, show_notes_and_references);
+    let output: Output = match query {
+        UserQuery::Search(search) => db
+            .search(search, show_links, show_notes_and_references)
+            .into(),
+        UserQuery::PortLookup(port) => db
+            .lookup(port, show_links, show_notes_and_references)
+            .into(),
+    };
     let output_str = if json_output {
         serde_json::to_string(&output)?
     } else {
