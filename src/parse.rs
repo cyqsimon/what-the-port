@@ -6,6 +6,7 @@ use std::{
 use color_eyre::eyre::{bail, OptionExt};
 use ego_tree::NodeRef;
 use itertools::Itertools;
+use log::trace;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use scraper::{node::Element, CaseSensitivity, ElementRef, Html, Node, Selector};
@@ -96,6 +97,7 @@ fn parse_port_range(cell: ElementRef<'_>) -> color_eyre::Result<(RangeInclusive<
         Some(n) => n.parse()?,
         None => 1,
     };
+
     let sanitised_range_str = cell
         .children()
         // remove superscripts
@@ -108,6 +110,7 @@ fn parse_port_range(cell: ElementRef<'_>) -> color_eyre::Result<(RangeInclusive<
         })
         .map(|n| get_text_from_node(&n, true))
         .collect::<String>();
+    trace!("parsing {sanitised_range_str}");
     let port_range = match sanitised_range_str.split_once(['-', '–']) {
         Some((start, end)) => {
             let start = start.parse()?;
@@ -133,23 +136,33 @@ fn parse_row_info<'a, I>(
 where
     I: DoubleEndedIterator<Item = ElementRef<'a>>,
 {
-    // description
-    let description_cell = cells.next_back().ok_or_eyre("Row has no cells")?;
-    let rich_description = parse_rich_text_cell(description_cell)?;
+    // old implementation was to read the last cell as description
+    // and use the remaining cells as port type
+    // but this approach does not handle extraneous cells well
+    // see revision 1248795838, port 9876
 
     // TCP, UDP, SCTP, DCCP
     let mut port_types = [PortType::Unused; 4];
     let mut types_it = port_types.iter_mut();
-    for cell in cells {
+    let mut span_count_sum = 0usize;
+    while span_count_sum < 4 {
+        let cell = cells
+            .next()
+            .ok_or_eyre("Ran out of port type cells before they span 4")?;
         let span = match cell.attr("colspan") {
             Some(n) => n.parse()?,
-            None => 1usize,
+            None => 1,
         };
+        span_count_sum += span;
         let type_ = cell.try_into()?;
         for _ in 0..span {
             *types_it.next().ok_or_eyre("Port type cells span > 4")? = type_;
         }
     }
+
+    // description
+    let description_cell = cells.next().ok_or_eyre("Row has no description cell")?;
+    let rich_description = parse_rich_text_cell(description_cell)?;
 
     Ok(PortRangeInfo {
         number: port_range,
