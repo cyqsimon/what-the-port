@@ -179,6 +179,7 @@ where
 /// A cell may contain multiple different kinds concatenated together.
 #[serde_as]
 #[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum RichTextSpan {
     /// Plain text segment.
     Text { text: String },

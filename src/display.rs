@@ -36,7 +36,7 @@ macro_rules! style_linked_text {
 /// All possible kinds of output, serialisable into either human-readable or
 /// machine-readable form.
 #[derive(Clone, Debug, derive_more::Display, derive_more::From, Serialize)]
-#[serde(tag = "type", content = "result")]
+#[serde(tag = "type", content = "result", rename_all = "kebab-case")]
 pub enum Output<'a> {
     Search(SearchOutput<'a>),
     PortLookup(PortLookupOutput<'a>),
@@ -44,6 +44,7 @@ pub enum Output<'a> {
 
 /// Structured output data in response to a general search.
 #[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct SearchOutput<'a> {
     pub search: String,
     pub matched: Vec<MatchedPort<'a>>,
@@ -99,6 +100,7 @@ impl<'a> fmt::Display for SearchOutput<'a> {
 
 /// Structured output data in response to a port lookup.
 #[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct PortLookupOutput<'a> {
     pub lookup: PortSelection,
     pub matched: Option<MatchedPort<'a>>,
@@ -132,6 +134,7 @@ impl<'a> fmt::Display for PortLookupOutput<'a> {
 ///
 /// The parent struct implementation decides how to display this info.
 #[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct MatchedPort<'a> {
     pub number: RangeInclusive<u16>,
     pub use_cases: Vec<PortUseCase<'a>>,
@@ -163,6 +166,7 @@ impl<'a> MatchedPort<'a> {
 
 /// A single use case for a user-specified port.
 #[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct PortUseCase<'a> {
     #[serde(skip_serializing_if = "PortType::is_unused")]
     tcp: PortType,
