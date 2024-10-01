@@ -77,8 +77,8 @@ impl<'a> fmt::Display for SearchOutput<'a> {
                         case_form = if case_count == 1 { "case" } else { "cases" },
                     )
                 };
-                let use_cases_str = p.as_use_cases_str(true, Some("    "), "\n\n");
-                format!("{subtitle}\n\n{use_cases_str}")
+                let use_cases_str = p.as_use_cases_str(true, Some("    "), "\n");
+                format!("{subtitle}\n{use_cases_str}")
             })
             .join("\n\n");
         let port_count = matched.len();
@@ -116,11 +116,11 @@ impl<'a> fmt::Display for PortLookupOutput<'a> {
             );
         };
 
-        let use_cases_str = matched.as_use_cases_str(true, Some("    "), "\n\n");
+        let use_cases_str = matched.as_use_cases_str(true, Some("    "), "\n");
         let count = matched.use_cases.len();
         write!(
             f,
-            "Port {p} is a {c} port with {count} known use {case_form}\n\n{use_cases_str}",
+            "Port {p} is a {c} port with {count} known use {case_form}\n{use_cases_str}",
             p = color!(self.lookup, Green),
             c = color!(category, Blue),
             case_form = if count == 1 { "case" } else { "cases" },
