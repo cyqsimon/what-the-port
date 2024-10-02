@@ -174,12 +174,20 @@ impl PortDatabase {
         show_links: bool,
         show_notes_and_references: bool,
     ) -> PortLookupOutput {
-        let use_cases = self
-            .0
-            .iter()
-            .filter(|p| p.matches_port(lookup))
-            .map(|p| PortUseCase::from_with_options(p, show_links, show_notes_and_references))
-            .collect_vec();
+        let (use_cases, _accumulated_idx) = self.0.iter().filter(|p| p.matches_port(lookup)).fold(
+            (vec![], 1),
+            |(mut list, mut link_idx), p| {
+                let use_case = PortUseCase::from_with_options(
+                    p,
+                    show_links.then_some(link_idx),
+                    show_notes_and_references,
+                );
+
+                link_idx += use_case.link_count();
+                list.push(use_case);
+                (list, link_idx)
+            },
+        );
 
         // note that these use cases may come from different port ranges
         // because ranges may overlap
@@ -204,23 +212,32 @@ impl PortDatabase {
     ) -> SearchOutput {
         let search = search.as_ref().to_owned();
 
-        let matched = self
+        let (matched, _accumulated_idx) = self
             .0
             .iter()
             .filter(|p| p.matches_search(&search, show_links, show_notes_and_references))
             .into_group_map_by(|p| &p.number)
             .into_iter()
-            .map(|(n, info)| {
-                let use_cases = info
-                    .into_iter()
-                    .map(|p| {
-                        PortUseCase::from_with_options(p, show_links, show_notes_and_references)
-                    })
-                    .collect();
-                MatchedPort { number: n.clone(), use_cases }
-            })
-            .sorted_by_key(|p| *p.number.start())
-            .collect();
+            .sorted_by_key(|(n, _)| n.start())
+            .fold((vec![], 1), |(mut list, link_idx), (n, info)| {
+                let (use_cases, accumulated_link_idx) =
+                    info.into_iter()
+                        .fold((vec![], link_idx), |(mut list, mut link_idx), p| {
+                            let use_case = PortUseCase::from_with_options(
+                                p,
+                                show_links.then_some(link_idx),
+                                show_notes_and_references,
+                            );
+
+                            link_idx += use_case.link_count();
+                            list.push(use_case);
+                            (list, link_idx)
+                        });
+
+                let matched = MatchedPort { number: n.clone(), use_cases };
+                list.push(matched);
+                (list, accumulated_link_idx)
+            });
 
         SearchOutput { search, matched }
     }

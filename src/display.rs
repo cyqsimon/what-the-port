@@ -78,7 +78,7 @@ impl<'a> fmt::Display for SearchOutput<'a> {
                         case_form = if case_count == 1 { "case" } else { "cases" },
                     )
                 };
-                let use_cases_str = p.as_use_cases_str(true, Some("    "), "\n");
+                let use_cases_str = p.format_use_cases(true, Some("    "), "\n");
                 format!("{subtitle}\n{use_cases_str}")
             })
             .join("\n\n");
@@ -94,7 +94,30 @@ impl<'a> fmt::Display for SearchOutput<'a> {
                 "ports or port ranges"
             },
             case_form = if case_count == 1 { "case" } else { "cases" },
-        )
+        )?;
+
+        let links = matched
+            .iter()
+            .flat_map(MatchedPort::format_links)
+            .collect_vec();
+        if !links.is_empty() {
+            let lines = links.iter().map(|line| format!("    {line}")).join("\n");
+            write!(f, "\n\nLinks:\n{lines}")?;
+        }
+
+        let notes_and_refs = matched
+            .iter()
+            .flat_map(MatchedPort::format_notes_and_refs)
+            .collect_vec();
+        if !notes_and_refs.is_empty() {
+            let lines = notes_and_refs
+                .iter()
+                .map(|line| format!("    {line}"))
+                .join("\n");
+            write!(f, "\n\nNotes and References:\n{lines}")?;
+        }
+
+        Ok(())
     }
 }
 
@@ -118,15 +141,32 @@ impl<'a> fmt::Display for PortLookupOutput<'a> {
             );
         };
 
-        let use_cases_str = matched.as_use_cases_str(true, Some("    "), "\n");
         let count = matched.use_cases.len();
+        let use_cases_str = matched.format_use_cases(true, Some("    "), "\n");
         write!(
             f,
             "Port {p} is a {c} port with {count} known use {case_form}\n{use_cases_str}",
             p = color!(self.lookup, Green),
             c = color!(category, Blue),
             case_form = if count == 1 { "case" } else { "cases" },
-        )
+        )?;
+
+        let links = matched.format_links();
+        if !links.is_empty() {
+            let lines = links.iter().map(|line| format!("    {line}")).join("\n");
+            write!(f, "\n\nLinks:\n{lines}")?;
+        }
+
+        let notes_and_refs = matched.format_notes_and_refs();
+        if !notes_and_refs.is_empty() {
+            let lines = notes_and_refs
+                .iter()
+                .map(|line| format!("    {line}"))
+                .join("\n");
+            write!(f, "\n\nNotes and References:\n{lines}")?;
+        }
+
+        Ok(())
     }
 }
 
@@ -140,31 +180,59 @@ pub struct MatchedPort<'a> {
     pub use_cases: Vec<PortUseCase<'a>>,
 }
 impl<'a> MatchedPort<'a> {
-    fn as_use_cases_str(
+    /// Format the use cases lines.
+    ///
+    /// Note that this does not include the optional sections.
+    fn format_use_cases(
         &self,
         numbered: bool,
         indentation: Option<&str>,
         case_separator: &str,
     ) -> String {
+        let indent = indentation.unwrap_or("");
         self.use_cases
             .iter()
             .enumerate()
             .map(|(i, use_case)| {
-                let s = if numbered {
-                    format!("{}: {use_case}", i + 1)
+                let description = if numbered {
+                    format!("{}: {}", i + 1, use_case.format_description())
                 } else {
-                    use_case.to_string()
+                    use_case.format_description()
                 };
-                match indentation {
-                    Some(indent) => s.lines().map(|line| format!("{indent}{line}")).join("\n"),
-                    None => s,
-                }
+                format!(
+                    "{indent}{description}\n{indent}{indent}{proto}",
+                    proto = use_case.format_protocols()
+                )
             })
             .join(case_separator)
+    }
+
+    /// Format lines of the optional link section.
+    ///
+    /// Each element contains its assigned link ID and line content.
+    fn format_links(&self) -> Vec<String> {
+        let links = self
+            .use_cases
+            .iter()
+            .flat_map(PortUseCase::format_links)
+            .collect_vec();
+        links
+    }
+
+    /// Format lines of the optional notes and references section.
+    fn format_notes_and_refs(&self) -> Vec<String> {
+        self.use_cases
+            .iter()
+            .flat_map(PortUseCase::format_notes_and_refs)
+            .collect()
     }
 }
 
 /// A single use case for a user-specified port.
+///
+/// This struct is intended for direct output, therefore the information about
+/// stored in this struct should already be filtered on creation based on
+/// user options.
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct PortUseCase<'a> {
@@ -195,67 +263,13 @@ pub struct PortUseCase<'a> {
     /// This is useful for JSON output.
     rich_description: &'a [RichTextSpan],
 }
-impl<'a> fmt::Display for PortUseCase<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use PortType as T;
-        let Self {
-            tcp,
-            udp,
-            sctp,
-            dccp,
-            description,
-            links,
-            notes_and_refs,
-            rich_description: _,
-        } = self;
-        // description line
-        write!(f, "{description}")?;
-
-        // protocol line
-        let mut protocol_buf = vec![];
-        macro_rules! push_proto {
-            ($proto: ident, $label: expr) => {
-                let proto_str = match $proto {
-                    T::Unused => None, // skip
-                    T::Yes => Some(format!("{}: {}", $label, color!($proto, Green))),
-                    T::Unofficial => Some(format!("{}: {}", $label, color!($proto, Cyan))),
-                    T::Assigned => Some(format!("{}: {}", $label, color!($proto, Yellow))),
-                    T::No => Some(format!("{}: {}", $label, color!($proto, Red))),
-                    T::Reserved => Some(format!("{}: {}", $label, color!($proto, xterm::Gray))),
-                };
-                if let Some(s) = proto_str {
-                    protocol_buf.push(s);
-                }
-            };
-        }
-        push_proto!(tcp, "TCP");
-        push_proto!(udp, "UDP");
-        push_proto!(sctp, "SCTP");
-        push_proto!(dccp, "DCCP");
-        write!(f, "\n    {p}", p = protocol_buf.join(", "))?;
-
-        // optional sections
-        macro_rules! write_list {
-            ($title: literal, $list: ident) => {
-                if !$list.is_empty() {
-                    let s = $list
-                        .iter()
-                        .map(|(id, url)| format!("    {id}: {url}"))
-                        .join("\n");
-                    write!(f, "\n{t}\n{s}", t = $title)?;
-                }
-            };
-        }
-        write_list!("Links:", links);
-        write_list!("Notes and References:", notes_and_refs);
-
-        Ok(())
-    }
-}
 impl<'a> PortUseCase<'a> {
+    /// Create an instance of [`PortUseCase`] by applying user options.
+    ///
+    /// `show_links` expects a starting index if links are to be shown.
     pub fn from_with_options(
         from: &'a PortRangeInfo,
-        show_links: bool,
+        mut show_links: Option<usize>,
         show_notes_and_references: bool,
     ) -> Self {
         use RichTextSpan as Span;
@@ -264,18 +278,15 @@ impl<'a> PortUseCase<'a> {
         let mut links = vec![];
         let mut notes_and_refs = vec![];
 
-        let mut link_idx = 1usize;
-
         for span in from.rich_description.iter() {
             match span {
                 Span::Text { text } => {
                     description.push_str(text);
                 }
                 Span::SiteLink { text, link } => {
-                    if show_links {
-                        let tag = color!(format!("[{link_idx}]"), Cyan).to_string();
-                        link_idx += 1;
-
+                    if let Some(idx) = show_links.as_mut() {
+                        let tag = color!(format!("[{idx}]"), Cyan).to_string();
+                        *idx += 1;
                         description.push_str(&style_linked_text!(text, Cyan).to_string());
                         description.push_str(&tag);
                         links.push((tag, format!("{ORIGIN_BASE_URL}{link}")));
@@ -284,10 +295,9 @@ impl<'a> PortUseCase<'a> {
                     }
                 }
                 Span::SiteLinkNonExistent { text, link } => {
-                    if show_links {
-                        let tag = color!(format!("[{link_idx}]"), Red).to_string();
-                        link_idx += 1;
-
+                    if let Some(idx) = show_links.as_mut() {
+                        let tag = color!(format!("[{idx}]"), Red).to_string();
+                        *idx += 1;
                         description.push_str(&style_linked_text!(text, Red).to_string());
                         description.push_str(&tag);
                         links.push((tag, format!("{ORIGIN_BASE_URL}{link}")));
@@ -296,10 +306,9 @@ impl<'a> PortUseCase<'a> {
                     }
                 }
                 Span::ExternalLink { text, link } => {
-                    if show_links {
-                        let tag = color!(format!("[{link_idx}]"), Cyan).to_string();
-                        link_idx += 1;
-
+                    if let Some(idx) = show_links.as_mut() {
+                        let tag = color!(format!("[{idx}]"), Cyan).to_string();
+                        *idx += 1;
                         description.push_str(&style_linked_text!(text, Cyan).to_string());
                         description.push_str(&tag);
                         links.push((tag, link.to_owned()));
@@ -344,5 +353,64 @@ impl<'a> PortUseCase<'a> {
             notes_and_refs,
             rich_description: &from.rich_description,
         }
+    }
+
+    /// Return the number of stored links.
+    ///
+    /// Useful for accumulating the global link index.
+    pub fn link_count(&self) -> usize {
+        self.links.len()
+    }
+
+    /// Format the description line.
+    fn format_description(&self) -> String {
+        self.description.clone()
+    }
+
+    /// Format the protocol line.
+    fn format_protocols(&self) -> String {
+        use PortType as T;
+        let Self { tcp, udp, sctp, dccp, .. } = self;
+
+        let mut buf = vec![];
+        macro_rules! push_proto {
+            ($proto: ident, $label: expr) => {
+                let proto_str = match $proto {
+                    T::Unused => None, // skip
+                    T::Yes => Some(format!("{}: {}", $label, color!($proto, Green))),
+                    T::Unofficial => Some(format!("{}: {}", $label, color!($proto, Cyan))),
+                    T::Assigned => Some(format!("{}: {}", $label, color!($proto, Yellow))),
+                    T::No => Some(format!("{}: {}", $label, color!($proto, Red))),
+                    T::Reserved => Some(format!("{}: {}", $label, color!($proto, xterm::Gray))),
+                };
+                if let Some(s) = proto_str {
+                    buf.push(s);
+                }
+            };
+        }
+        push_proto!(tcp, "TCP");
+        push_proto!(udp, "UDP");
+        push_proto!(sctp, "SCTP");
+        push_proto!(dccp, "DCCP");
+
+        buf.join(", ")
+    }
+
+    /// Format lines of the optional link section.
+    fn format_links(&self) -> Vec<String> {
+        let links = self
+            .links
+            .iter()
+            .map(|(id, url)| format!("{id}: {url}"))
+            .collect_vec();
+        links
+    }
+
+    /// Format lines of the optional notes and references section.
+    fn format_notes_and_refs(&self) -> Vec<String> {
+        self.notes_and_refs
+            .iter()
+            .map(|(id, url)| format!("{id}: {url}"))
+            .collect()
     }
 }
