@@ -26,11 +26,18 @@ pub struct CliArgs {
     #[arg(short = 'o', long = "offline")]
     pub offline: bool,
 
-    /// Show links in the port description.
+    /// Show an additional link section.
+    ///
+    /// Note: when outputting to TTY, inline hyperlinks are always available
+    /// regardless of this option. This option is most useful when redirecting
+    /// output to a file, or when your terminal does not support OSC8.
     #[arg(short = 'l', long = "links", alias = "link")]
     pub show_links: bool,
 
     /// Show notes and references in the port description.
+    ///
+    /// Note: in contrast to links, notes and references will not be shown inline
+    /// without this option.
     #[arg(short = 'r', long = "references", visible_aliases = ["refs", "notes"], aliases = ["reference", "ref", "note"])]
     pub show_notes_and_references: bool,
 
