@@ -62,6 +62,9 @@ async fn main() -> color_eyre::Result<()> {
     // parse
     let db = parse_page(&page)?;
 
+    // set conditional colourisation
+    yansi::whenever(yansi::Condition::TTY_AND_COLOR);
+
     // query and print
     let output: Output = match query {
         UserQuery::Search(search) => db

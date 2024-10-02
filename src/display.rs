@@ -1,7 +1,6 @@
 use std::{fmt, ops::RangeInclusive};
 
 use itertools::Itertools;
-use owo_colors::OwoColorize;
 use serde::Serialize;
 
 use crate::{
@@ -11,25 +10,19 @@ use crate::{
     store::{PortCategory, PortRangeInfo, PortType},
 };
 
-/// Short-hand macro to conditionally colorize output.
+/// Short-hand macro to colorize output.
 macro_rules! color {
     ($item: expr, $fg: ident) => {{
-        let style = owo_colors::Style::new().fg::<owo_colors::colors::$fg>();
-        $item.if_supports_color(owo_colors::Stream::Stdout, move |t| t.style(style))
-    }};
-    ($item: expr, xterm::$fg: ident) => {{
-        let style = owo_colors::Style::new().fg::<owo_colors::colors::xterm::$fg>();
-        $item.if_supports_color(owo_colors::Stream::Stdout, move |t| t.style(style))
+        let style = yansi::Style::new().fg(yansi::Color::$fg);
+        yansi::Paint::paint(&$item, style)
     }};
 }
 
-/// Short-hand macro to conditionally stylise linked text.
+/// Short-hand macro to stylise linked text.
 macro_rules! style_linked_text {
     ($item: expr, $fg: ident) => {{
-        let style = owo_colors::Style::new()
-            .fg::<owo_colors::colors::$fg>()
-            .italic();
-        $item.if_supports_color(owo_colors::Stream::Stdout, move |t| t.style(style))
+        let style = yansi::Style::new().fg(yansi::Color::$fg).italic();
+        yansi::Paint::paint(&$item, style)
     }};
 }
 
@@ -381,7 +374,7 @@ impl<'a> PortUseCase<'a> {
                     T::Unofficial => Some(format!("{}: {}", $label, color!($proto, Cyan))),
                     T::Assigned => Some(format!("{}: {}", $label, color!($proto, Yellow))),
                     T::No => Some(format!("{}: {}", $label, color!($proto, Red))),
-                    T::Reserved => Some(format!("{}: {}", $label, color!($proto, xterm::Gray))),
+                    T::Reserved => Some(format!("{}: {}", $label, color!($proto, BrightBlack))),
                 };
                 if let Some(s) = proto_str {
                     buf.push(s);
