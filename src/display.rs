@@ -19,10 +19,10 @@ macro_rules! color {
 }
 
 /// Short-hand macro to stylise linked text.
-macro_rules! style_linked_text {
-    ($item: expr, $fg: ident) => {{
+macro_rules! hyperlink {
+    ($item: expr, $fg: ident, $url: expr) => {{
         let style = yansi::Style::new().fg(yansi::Color::$fg).italic();
-        yansi::Paint::paint(&$item, style)
+        yansi::hyperlink::HyperlinkExt::link(&yansi::Paint::paint(&$item, style), $url)
     }};
 }
 
@@ -277,57 +277,64 @@ impl<'a> PortUseCase<'a> {
                     description.push_str(text);
                 }
                 Span::SiteLink { text, link } => {
+                    let url = format!("{ORIGIN_BASE_URL}{link}");
                     if let Some(idx) = show_links.as_mut() {
-                        let tag = color!(format!("[{idx}]"), Cyan).to_string();
+                        let tag = format!("[{idx}]");
                         *idx += 1;
-                        description.push_str(&style_linked_text!(text, Cyan).to_string());
-                        description.push_str(&tag);
-                        links.push((tag, format!("{ORIGIN_BASE_URL}{link}")));
+                        description
+                            .push_str(&hyperlink!(format!("{text}{tag}"), Cyan, &url).to_string());
+                        links.push((color!(tag, Cyan).to_string(), url));
                     } else {
-                        description.push_str(text);
+                        description.push_str(&hyperlink!(text, Cyan, &url).to_string());
                     }
                 }
                 Span::SiteLinkNonExistent { text, link } => {
+                    let url = format!("{ORIGIN_BASE_URL}{link}");
                     if let Some(idx) = show_links.as_mut() {
-                        let tag = color!(format!("[{idx}]"), Red).to_string();
+                        let tag = format!("[{idx}]");
                         *idx += 1;
-                        description.push_str(&style_linked_text!(text, Red).to_string());
-                        description.push_str(&tag);
-                        links.push((tag, format!("{ORIGIN_BASE_URL}{link}")));
+                        description
+                            .push_str(&hyperlink!(format!("{text}{tag}"), Red, &url).to_string());
+                        links.push((color!(tag, Red).to_string(), url));
                     } else {
-                        description.push_str(text);
+                        description.push_str(&hyperlink!(text, Red, &url).to_string());
                     }
                 }
                 Span::ExternalLink { text, link } => {
+                    let url = link.to_owned();
                     if let Some(idx) = show_links.as_mut() {
-                        let tag = color!(format!("[{idx}]"), Cyan).to_string();
+                        let tag = format!("[{idx}]");
                         *idx += 1;
-                        description.push_str(&style_linked_text!(text, Cyan).to_string());
-                        description.push_str(&tag);
-                        links.push((tag, link.to_owned()));
+                        description
+                            .push_str(&hyperlink!(format!("{text}{tag}"), Cyan, &url).to_string());
+                        links.push((color!(tag, Cyan).to_string(), url));
                     } else {
-                        description.push_str(text);
+                        description.push_str(&hyperlink!(text, Cyan, &url).to_string());
                     }
                 }
                 Span::Note { number, note_id } => {
                     if show_notes_and_references {
-                        let tag = color!(format!("[note {number}]"), Yellow).to_string();
-                        description.push_str(&tag);
-                        notes_and_refs.push((tag, format!("{PAGE_URL}#{note_id}")));
+                        let url = format!("{PAGE_URL}#{note_id}");
+                        let tag = format!("[note {number}]");
+                        description.push_str(&hyperlink!(tag, Yellow, &url).to_string());
+                        notes_and_refs.push((color!(tag, Yellow).to_string(), url));
                     }
                 }
                 Span::Reference { number, ref_id } => {
                     if show_notes_and_references {
-                        let tag = color!(format!("[ref {number}]"), Yellow).to_string();
-                        description.push_str(&tag);
-                        notes_and_refs.push((tag, format!("{PAGE_URL}#{ref_id}")));
+                        let url = format!("{PAGE_URL}#{ref_id}");
+                        let tag = format!("[ref {number}]");
+                        description.push_str(&hyperlink!(tag, Yellow, &url).to_string());
+                        notes_and_refs.push((color!(tag, Yellow).to_string(), url));
                     }
                 }
                 Span::Annotation { text, link } => {
                     if show_notes_and_references {
-                        let tag = color!(format!("{text}"), Yellow).to_string();
-                        description.push_str(&tag);
-                        notes_and_refs.push((tag, format!("{ORIGIN_BASE_URL}{link}")));
+                        let url = format!("{ORIGIN_BASE_URL}{link}");
+                        // currently annotation text already contains delimiting brackets
+                        let tag = text.clone();
+                        description.push_str(&hyperlink!(tag, Yellow, &url).to_string());
+                        notes_and_refs.push((color!(tag, Yellow).to_string(), url));
                     }
                 }
                 Span::Unknown { text, err: _ } => {

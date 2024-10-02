@@ -33,4 +33,8 @@ serde_with = "3.9.0"
 simplelog = "0.12.2"
 strum = { version = "0.26.3", features = ["derive"] }
 tokio = { version = "1.40.0", features = ["full"] }
-yansi = { version = "1.0.1", features = ["detect-env", "detect-tty"] }
+yansi = { version = "1.0.1", features = [
+    "detect-env",
+    "detect-tty",
+    "hyperlink",
+] }
