@@ -8,7 +8,7 @@ keywords = ["cli", "tool", "lookup", "port"]
 license = "AGPL-3.0-or-later"
 name = "what-the-port"
 rust-version = "1.75.0"
-version = "0.4.0"
+version = "0.5.0"
 
 [[bin]]
 name = "wtp"
