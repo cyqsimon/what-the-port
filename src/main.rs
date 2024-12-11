@@ -20,6 +20,8 @@ mod store;
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
+    color_eyre::install()?;
+
     let CliArgs {
         query,
         revision,
