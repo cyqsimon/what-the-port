@@ -1,6 +1,6 @@
 # what-the-port
 
-Quickly lookup what a port is used for.
+Quickly lookup what a port is used for or what port to use.
 
 [![Demo](https://asciinema.org/a/tgWvNGTvEmbhkK0hzmusu3hHp.svg)](https://asciinema.org/a/tgWvNGTvEmbhkK0hzmusu3hHp)
 
