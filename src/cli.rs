@@ -17,14 +17,16 @@ pub struct CliArgs {
 
     /// Which Wikipedia page revision you would like to use.
     ///
-    /// If unspecified, we will try to fetch the latest.
-    /// If that fails, we will use the latest revision from local cache.
+    /// If unspecified, use the latest revision from either online or local cache,
+    /// depending on whether `--pull` is used.
     #[arg(long = "revision", visible_alias = "rev")]
     pub revision: Option<u64>,
 
-    /// Disable all network access and only use local cache.
-    #[arg(short = 'o', long = "offline")]
-    pub offline: bool,
+    /// Attempt to retrieve revisions from Wikipedia.
+    ///
+    /// If `--revision` is unspecified, this will pull the latest revision.
+    #[arg(short = 'p', long = "pull", visible_alias = "online")]
+    pub pull: bool,
 
     /// Show an additional link section.
     ///

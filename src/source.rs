@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
 use color_eyre::eyre::OptionExt;
-use log::warn;
 use serde::Deserialize;
 use tokio::fs;
 
@@ -78,46 +77,59 @@ fn get_revision_path(cache_dir: impl AsRef<Path>, revision: u64) -> PathBuf {
     cache_dir.as_ref().join(format!("{revision}.html"))
 }
 
-/// Cache the specified revision if it does not exist already.
-async fn ensure_cached(
+/// Get and cache a Wikipedia page from the network.
+///
+/// If a revision is absent, we query and fetch the newest revision.
+///
+/// Returns the path to and content of the cached page.
+/// Errors if we encounter network problems, or if the revision is invalid.
+pub async fn get_wikipedia_page_online(
     cache_dir: impl AsRef<Path>,
     client: &reqwest::Client,
-    revision: u64,
-) -> color_eyre::Result<PathBuf> {
+    revision: Option<u64>,
+) -> color_eyre::Result<(PathBuf, String)> {
     let cache_dir = cache_dir.as_ref();
+
+    // get revision
+    let revision = match revision {
+        Some(rev) => rev,
+        None => query_latest_revision(&client).await?,
+    };
 
     // use cached if exists
     let page_path = get_revision_path(cache_dir, revision);
     if page_path.exists() {
-        return Ok(page_path);
+        let content = fs::read_to_string(&page_path).await?;
+        return Ok((page_path, content));
     }
 
     // fetch
     let url = format!("{PAGE_URL}?oldid={revision}");
-    let page_bytes = client
+    let content = client
         .get(url)
         .send()
         .await?
         .error_for_status()?
-        .bytes()
+        .text()
         .await?;
 
     // cache
     fs::create_dir_all(&cache_dir).await?;
-    fs::write(&page_path, page_bytes).await?;
+    fs::write(&page_path, &content).await?;
 
-    Ok(page_path)
+    Ok((page_path, content))
 }
 
-/// Get the Wikipedia page with network disabled. Will error if no cached page is available.
+/// Get the Wikipedia page with network disabled.
 ///
 /// If a revision is absent, we return the newest available revision.
 ///
-/// Returns the page as string.
+/// Returns the path to and content of the page.
+/// Errors if the requested page is unavailable.
 pub async fn get_wikipedia_page_offline(
     cache_dir: impl AsRef<Path>,
     revision: Option<u64>,
-) -> color_eyre::Result<String> {
+) -> color_eyre::Result<(PathBuf, String)> {
     let cache_dir = cache_dir.as_ref();
 
     let revision = match revision {
@@ -126,53 +138,7 @@ pub async fn get_wikipedia_page_offline(
     };
 
     let page_path = get_revision_path(cache_dir, revision);
-    let page_str = fs::read_to_string(page_path).await?;
+    let content = fs::read_to_string(&page_path).await?;
 
-    Ok(page_str)
-}
-
-/// Get the Wikipedia page with network enabled. Cache is written or read when appropriate.
-///
-/// This function is intended to provide the best experience for the user. Therefore,
-/// - if a revision is provided, we only return `Ok` when the exact revision is accessible.
-/// - if a revision is absent, we return the newest accessible revision, and only error
-///     when nothing is available.
-///
-/// Returns the page as string.
-pub async fn get_wikipedia_page_online(
-    cache_dir: impl AsRef<Path>,
-    client: &reqwest::Client,
-    revision: Option<u64>,
-) -> color_eyre::Result<String> {
-    let cache_dir = cache_dir.as_ref();
-
-    let page_path = match revision {
-        Some(rev_id) => ensure_cached(cache_dir, client, rev_id).await?,
-        None => {
-            let latest_page_path = match query_latest_revision(client).await {
-                Ok(r) => match ensure_cached(cache_dir, client, r).await {
-                    Ok(path) => Some(path),
-                    Err(err) => {
-                        warn!("Successfully queried the latest revision ID ({r}), but fetch failed: {err}");
-                        None
-                    }
-                },
-                Err(err) => {
-                    warn!("Failed to query the latest revision: {err}");
-                    None
-                }
-            };
-            match latest_page_path {
-                Some(path) => path,
-                None => {
-                    warn!("Will attempt to use the newest cached page");
-                    let local_rev = get_latest_cached_revision(cache_dir).await?;
-                    get_revision_path(cache_dir, local_rev)
-                }
-            }
-        }
-    };
-    let page_str = fs::read_to_string(page_path).await?;
-
-    Ok(page_str)
+    Ok((page_path, content))
 }

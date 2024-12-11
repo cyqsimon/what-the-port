@@ -8,22 +8,22 @@ use crate::{
     cli::{CliArgs, UserQuery},
     display::Output,
     parse::parse_page,
-    update::{get_wikipedia_page_offline, get_wikipedia_page_online},
+    source::{get_wikipedia_page_offline, get_wikipedia_page_online},
 };
 
 mod cli;
 mod consts;
 mod display;
 mod parse;
+mod source;
 mod store;
-mod update;
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     let CliArgs {
         query,
         revision,
-        offline,
+        pull,
         show_links,
         show_notes_and_references,
         json_output,
@@ -49,14 +49,14 @@ async fn main() -> color_eyre::Result<()> {
         .to_owned();
 
     // get page
-    let page = if offline {
-        get_wikipedia_page_offline(&cache_dir, revision).await?
-    } else {
+    let (_page_path, page) = if pull {
         let client = reqwest::ClientBuilder::new()
             .connection_verbose(true)
             .timeout(Duration::from_secs(10))
             .build()?;
         get_wikipedia_page_online(&cache_dir, &client, revision).await?
+    } else {
+        get_wikipedia_page_offline(&cache_dir, revision).await?
     };
 
     // parse
