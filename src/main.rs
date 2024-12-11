@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use clap::Parser;
-use color_eyre::eyre::OptionExt;
+use color_eyre::eyre::{Context, OptionExt};
 use simplelog::{ColorChoice, TermLogger, TerminalMode};
 
 use crate::{
@@ -55,14 +55,19 @@ async fn main() -> color_eyre::Result<()> {
         let client = reqwest::ClientBuilder::new()
             .connection_verbose(true)
             .timeout(Duration::from_secs(10))
-            .build()?;
-        get_wikipedia_page_online(&cache_dir, &client, revision).await?
+            .build()
+            .wrap_err("Failed to initialise HTTP client")?;
+        get_wikipedia_page_online(&cache_dir, &client, revision)
+            .await
+            .wrap_err("Failed to fetch Wikipedia page from network")?
     } else {
-        get_wikipedia_page_offline(&cache_dir, revision).await?
+        get_wikipedia_page_offline(&cache_dir, revision)
+            .await
+            .wrap_err("Failed to fetch Wikipedia page from local cache")?
     };
 
     // parse
-    let db = parse_page(&page)?;
+    let db = parse_page(&page).wrap_err("Failed to parse Wikipedia page")?;
 
     // set conditional colourisation
     yansi::whenever(yansi::Condition::TTY_AND_COLOR);

@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use color_eyre::eyre::OptionExt;
+use color_eyre::eyre::{Context, OptionExt};
 use serde::Deserialize;
 use tokio::fs;
 
@@ -93,13 +93,17 @@ pub async fn get_wikipedia_page_online(
     // get revision
     let revision = match revision {
         Some(rev) => rev,
-        None => query_latest_revision(client).await?,
+        None => query_latest_revision(client)
+            .await
+            .wrap_err("Failed to query latest revision. Network issue?")?,
     };
 
     // use cached if exists
     let page_path = get_revision_path(cache_dir, revision);
     if page_path.exists() {
-        let content = fs::read_to_string(&page_path).await?;
+        let content = fs::read_to_string(&page_path)
+            .await
+            .wrap_err_with(|| format!("Failed to read cached page at {page_path:?}"))?;
         return Ok((page_path, content));
     }
 
@@ -114,8 +118,12 @@ pub async fn get_wikipedia_page_online(
         .await?;
 
     // cache
-    fs::create_dir_all(&cache_dir).await?;
-    fs::write(&page_path, &content).await?;
+    fs::create_dir_all(&cache_dir)
+        .await
+        .wrap_err_with(|| format!("Failed to create cache directory at {cache_dir:?}"))?;
+    fs::write(&page_path, &content)
+        .await
+        .wrap_err_with(|| format!("Failed to cache saved page at {page_path:?}"))?;
 
     Ok((page_path, content))
 }
@@ -134,11 +142,15 @@ pub async fn get_wikipedia_page_offline(
 
     let revision = match revision {
         Some(r) => r,
-        None => get_latest_cached_revision(cache_dir).await?,
+        None => get_latest_cached_revision(cache_dir)
+            .await
+            .wrap_err("No revisions cached; please run with `-p|--pull` first")?,
     };
 
     let page_path = get_revision_path(cache_dir, revision);
-    let content = fs::read_to_string(&page_path).await?;
+    let content = fs::read_to_string(&page_path)
+        .await
+        .wrap_err_with(|| format!("Failed to read cached page at {page_path:?}"))?;
 
     Ok((page_path, content))
 }
