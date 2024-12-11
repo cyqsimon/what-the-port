@@ -2,7 +2,7 @@
 
 Quickly lookup what a port is used for.
 
-[![Demo](https://asciinema.org/a/eZpsErATwmm82hcHxrKxROz5C.svg)](https://asciinema.org/a/eZpsErATwmm82hcHxrKxROz5C)
+[![Demo](https://asciinema.org/a/tgWvNGTvEmbhkK0hzmusu3hHp.svg)](https://asciinema.org/a/tgWvNGTvEmbhkK0hzmusu3hHp)
 
 ## Install
 
