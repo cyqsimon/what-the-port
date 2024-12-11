@@ -1,7 +1,7 @@
 use std::{convert::Infallible, fmt, str::FromStr};
 
 use clap::Parser;
-use clap_verbosity_flag::{InfoLevel, Verbosity};
+use clap_verbosity_flag::{Verbosity, WarnLevel};
 use serde_with::SerializeDisplay;
 
 #[derive(Clone, Debug, Parser)]
@@ -48,7 +48,7 @@ pub struct CliArgs {
     pub json_output: bool,
 
     #[command(flatten)]
-    pub verbosity: Verbosity<InfoLevel>,
+    pub verbosity: Verbosity<WarnLevel>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
