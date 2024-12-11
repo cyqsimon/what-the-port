@@ -42,7 +42,7 @@ pub struct SearchOutput<'a> {
     pub search: String,
     pub matched: Vec<MatchedPort<'a>>,
 }
-impl<'a> fmt::Display for SearchOutput<'a> {
+impl fmt::Display for SearchOutput<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Self { search, matched } = self;
 
@@ -121,7 +121,7 @@ pub struct PortLookupOutput<'a> {
     pub lookup: PortSelection,
     pub matched: Option<MatchedPort<'a>>,
 }
-impl<'a> fmt::Display for PortLookupOutput<'a> {
+impl fmt::Display for PortLookupOutput<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let category = PortCategory::from(self.lookup.number);
 
@@ -172,7 +172,7 @@ pub struct MatchedPort<'a> {
     pub number: RangeInclusive<u16>,
     pub use_cases: Vec<PortUseCase<'a>>,
 }
-impl<'a> MatchedPort<'a> {
+impl MatchedPort<'_> {
     /// Format the use cases lines.
     ///
     /// Note that this does not include the optional sections.

@@ -93,7 +93,7 @@ pub async fn get_wikipedia_page_online(
     // get revision
     let revision = match revision {
         Some(rev) => rev,
-        None => query_latest_revision(&client).await?,
+        None => query_latest_revision(client).await?,
     };
 
     // use cached if exists
