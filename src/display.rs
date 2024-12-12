@@ -31,8 +31,57 @@ macro_rules! hyperlink {
 #[derive(Clone, Debug, derive_more::Display, derive_more::From, Serialize)]
 #[serde(tag = "type", content = "result", rename_all = "kebab-case")]
 pub enum Output<'a> {
-    Search(SearchOutput<'a>),
     PortLookup(PortLookupOutput<'a>),
+    Search(SearchOutput<'a>),
+}
+
+/// Structured output data in response to a port lookup.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct PortLookupOutput<'a> {
+    pub lookup: PortSelection,
+    pub matched: Option<MatchedPort<'a>>,
+}
+impl fmt::Display for PortLookupOutput<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let category = PortCategory::from(self.lookup.number);
+
+        let Some(matched) = &self.matched else {
+            return write!(
+                f,
+                "Port {p} is a {c} port with no known use cases",
+                p = color!(self.lookup, Red),
+                c = color!(category, Blue),
+            );
+        };
+
+        let count = matched.use_cases.len();
+        let use_cases_str = matched.format_use_cases(true, Some("    "), "\n");
+        write!(
+            f,
+            "Port {p} is a {c} port with {count} known use {case_form}\n{use_cases_str}",
+            p = color!(self.lookup, Green),
+            c = color!(category, Blue),
+            case_form = if count == 1 { "case" } else { "cases" },
+        )?;
+
+        let links = matched.format_links();
+        if !links.is_empty() {
+            let lines = links.iter().map(|line| format!("    {line}")).join("\n");
+            write!(f, "\n\nLinks:\n{lines}")?;
+        }
+
+        let notes_and_refs = matched.format_notes_and_refs();
+        if !notes_and_refs.is_empty() {
+            let lines = notes_and_refs
+                .iter()
+                .map(|line| format!("    {line}"))
+                .join("\n");
+            write!(f, "\n\nNotes and References:\n{lines}")?;
+        }
+
+        Ok(())
+    }
 }
 
 /// Structured output data in response to a general search.
@@ -102,55 +151,6 @@ impl fmt::Display for SearchOutput<'_> {
             .iter()
             .flat_map(MatchedPort::format_notes_and_refs)
             .collect_vec();
-        if !notes_and_refs.is_empty() {
-            let lines = notes_and_refs
-                .iter()
-                .map(|line| format!("    {line}"))
-                .join("\n");
-            write!(f, "\n\nNotes and References:\n{lines}")?;
-        }
-
-        Ok(())
-    }
-}
-
-/// Structured output data in response to a port lookup.
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct PortLookupOutput<'a> {
-    pub lookup: PortSelection,
-    pub matched: Option<MatchedPort<'a>>,
-}
-impl fmt::Display for PortLookupOutput<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let category = PortCategory::from(self.lookup.number);
-
-        let Some(matched) = &self.matched else {
-            return write!(
-                f,
-                "Port {p} is a {c} port with no known use cases",
-                p = color!(self.lookup, Red),
-                c = color!(category, Blue),
-            );
-        };
-
-        let count = matched.use_cases.len();
-        let use_cases_str = matched.format_use_cases(true, Some("    "), "\n");
-        write!(
-            f,
-            "Port {p} is a {c} port with {count} known use {case_form}\n{use_cases_str}",
-            p = color!(self.lookup, Green),
-            c = color!(category, Blue),
-            case_form = if count == 1 { "case" } else { "cases" },
-        )?;
-
-        let links = matched.format_links();
-        if !links.is_empty() {
-            let lines = links.iter().map(|line| format!("    {line}")).join("\n");
-            write!(f, "\n\nLinks:\n{lines}")?;
-        }
-
-        let notes_and_refs = matched.format_notes_and_refs();
         if !notes_and_refs.is_empty() {
             let lines = notes_and_refs
                 .iter()

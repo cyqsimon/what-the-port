@@ -7,7 +7,7 @@ use serde_with::SerializeDisplay;
 #[derive(Clone, Debug, Parser)]
 #[command(author, version)]
 pub struct CliArgs {
-    /// Plain text search term or a port specification.
+    /// A port specification or a plain text search term.
     ///
     /// ## Port specification
     /// - either a port number: `80`
@@ -53,16 +53,16 @@ pub struct CliArgs {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum UserQuery {
-    /// User specified a search term.
-    Search(String),
     /// User specified a port lookup.
     PortLookup(PortSelection),
+    /// User specified a search term.
+    Search(String),
 }
 impl fmt::Display for UserQuery {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Search(s) => write!(f, r#"Search: "{s}""#),
             Self::PortLookup(port) => write!(f, "{port}"),
+            Self::Search(s) => write!(f, r#"Search: "{s}""#),
         }
     }
 }

@@ -74,11 +74,11 @@ async fn main() -> color_eyre::Result<()> {
 
     // query and print
     let output: Output = match query {
-        UserQuery::Search(search) => db
-            .search(search, show_links, show_notes_and_references)
-            .into(),
         UserQuery::PortLookup(port) => db
             .lookup(port, show_links, show_notes_and_references)
+            .into(),
+        UserQuery::Search(search) => db
+            .search(search, show_links, show_notes_and_references)
             .into(),
     };
     let output_str = if json_output {
