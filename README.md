@@ -4,6 +4,9 @@ Quickly lookup what a port is used for or what port to use.
 
 [![Demo](https://asciinema.org/a/tgWvNGTvEmbhkK0hzmusu3hHp.svg)](https://asciinema.org/a/tgWvNGTvEmbhkK0hzmusu3hHp)
 
+All links are clickable if your terminal supports [OSC8](https://github.com/Alhadis/OSC8-Adoption).
+If not, you can always use `-l|--links` and/or `-r|--references` to print them in a separate section.
+
 ## Install
 
 This tool is very new, so it hasn't been packaged in many places.
