@@ -67,7 +67,7 @@ async fn get_latest_cached_revision(cache_dir: impl AsRef<Path>) -> color_eyre::
         }
     }
 
-    max_rev.ok_or_eyre("No cached pages found")
+    max_rev.ok_or_eyre("No cached pages found; please run with `-p|--pull` first")
 }
 
 /// Get the local path for a revision.
@@ -144,7 +144,7 @@ pub async fn get_wikipedia_page_offline(
         Some(r) => r,
         None => get_latest_cached_revision(cache_dir)
             .await
-            .wrap_err("No revisions cached; please run with `-p|--pull` first")?,
+            .wrap_err("Failed to find the latest cached revision")?,
     };
 
     let page_path = get_revision_path(cache_dir, revision);
