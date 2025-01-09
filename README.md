@@ -7,6 +7,9 @@ Quickly lookup what a port is used for or what port to use.
 All links are clickable if your terminal supports [OSC8](https://github.com/Alhadis/OSC8-Adoption).
 If not, you can always use `-l|--links` and/or `-r|--references` to print them in a separate section.
 
+In case you are a [`NO_COLOR`](https://no-color.org/) kind of person, we got you covered as well,
+thanks to the magic of [`yansi`](https://docs.rs/yansi/latest/yansi/struct.Condition.html#associatedconstant.TTY_AND_COLOR).
+
 ## Install
 
 This tool is very new, so it hasn't been packaged in many places.
