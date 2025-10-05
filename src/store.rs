@@ -173,7 +173,7 @@ impl PortDatabase {
         lookup: PortSelection,
         show_links: bool,
         show_notes_and_references: bool,
-    ) -> PortLookupOutput {
+    ) -> PortLookupOutput<'_> {
         let (use_cases, _accumulated_idx) = self.0.iter().filter(|p| p.matches_port(lookup)).fold(
             (vec![], 1),
             |(mut list, mut link_idx), p| {
@@ -209,7 +209,7 @@ impl PortDatabase {
         search: impl AsRef<str>,
         show_links: bool,
         show_notes_and_references: bool,
-    ) -> SearchOutput {
+    ) -> SearchOutput<'_> {
         let search = search.as_ref().to_owned();
 
         let (matched, _accumulated_idx) = self
