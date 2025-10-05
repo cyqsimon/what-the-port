@@ -7,7 +7,7 @@ repository = "https://github.com/cyqsimon/what-the-port"
 keywords = ["cli", "tool", "lookup", "port"]
 license = "AGPL-3.0-or-later"
 name = "what-the-port"
-rust-version = "1.75.0"
+rust-version = "1.82.0"
 version = "0.5.2"
 
 [[bin]]
@@ -15,25 +15,25 @@ name = "wtp"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "4.5.23", features = ["derive", "cargo"] }
-clap-verbosity-flag = "3.0.1"
-color-eyre = "0.6.3"
+clap = { version = "4.5.48", features = ["derive", "cargo"] }
+clap-verbosity-flag = "3.0.4"
+color-eyre = "0.6.5"
 const_format = "0.2.34"
-derive_more = { version = "1.0.0", features = ["display", "from"] }
-directories = "5.0.1"
+derive_more = { version = "2.0.1", features = ["display", "from"] }
+directories = "6.0.0"
 ego-tree = "0.10.0"
-itertools = "0.13.0"
-log = "0.4.22"
-once_cell = "1.20.2"
-regex = "1.11.1"
-reqwest = { version = "0.12.9", features = ["json"] }
-scraper = "0.22.0"
-serde = { version = "1.0.216", features = ["derive"] }
-serde_json = "1.0.133"
-serde_with = "3.11.0"
+itertools = "0.14.0"
+log = "0.4.28"
+once_cell = "1.21.3"
+regex = "1.11.3"
+reqwest = { version = "0.12.23", features = ["json"] }
+scraper = "0.24.0"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+serde_with = "3.14.1"
 simplelog = "0.12.2"
-strum = { version = "0.26.3", features = ["derive"] }
-tokio = { version = "1.42.0", features = ["full"] }
+strum = { version = "0.27.2", features = ["derive"] }
+tokio = { version = "1.47.1", features = ["full"] }
 yansi = { version = "1.0.1", features = [
     "detect-env",
     "detect-tty",
