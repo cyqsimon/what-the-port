@@ -6,6 +6,7 @@ use simplelog::{ColorChoice, TermLogger, TerminalMode};
 
 use crate::{
     cli::{CliArgs, UserQuery},
+    consts::USER_AGENT,
     display::Output,
     parse::parse_page,
     source::{get_wikipedia_page_offline, get_wikipedia_page_online},
@@ -53,6 +54,7 @@ async fn main() -> color_eyre::Result<()> {
     // get page
     let (_page_path, page) = if pull {
         let client = reqwest::ClientBuilder::new()
+            .user_agent(USER_AGENT)
             .connection_verbose(true)
             .timeout(Duration::from_secs(10))
             .build()

@@ -1,3 +1,15 @@
+use std::env;
+
+use const_format::formatcp;
+
+/// The user agent set for all network requests.
+pub const USER_AGENT: &str = formatcp!(
+    "{}/{} ({})",
+    env!("CARGO_PKG_NAME"),
+    env!("CARGO_PKG_VERSION"),
+    env!("CARGO_PKG_REPOSITORY"),
+);
+
 /// The history API URL for the source page.
 pub const HISTORY_API_URL: &str =
     "https://api.wikimedia.org/core/v1/wikipedia/en/page/List_of_TCP_and_UDP_port_numbers/history";
