@@ -246,8 +246,8 @@ impl RichTextSpan {
                             vec![Span::Text { text }]
                         }
                     }
-                    // ignore style tags and recurse
-                    Node::Element(el) if matches!(el.name(), "b" | "i") => node
+                    // ignore tags with no semantic significance and recurse
+                    Node::Element(el) if matches!(el.name(), "span" | "b" | "i") => node
                         .children()
                         .map(parse_impl)
                         .collect::<Result<Vec<_>, _>>()?
