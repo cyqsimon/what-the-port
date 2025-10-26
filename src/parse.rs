@@ -1,4 +1,5 @@
 use std::{
+    iter,
     ops::{Deref, RangeInclusive},
     sync::Arc,
 };
@@ -183,6 +184,8 @@ where
 pub enum RichTextSpan {
     /// Plain text segment.
     Text { text: String },
+    /// Abbreviation.
+    Abbreviation { short: String, long: Option<String> },
     /// A link to somewhere within the same origin.
     SiteLink { text: String, link: String },
     /// A link to somewhere within the same origin that does not yet exist.
@@ -251,6 +254,12 @@ impl RichTextSpan {
                         .into_iter()
                         .flatten()
                         .collect(),
+                    // abbreviations
+                    Node::Element(el) if el.name() == "abbr" => {
+                        let short = get_text_from_node(&node, false);
+                        let long = el.attr("title").map(ToOwned::to_owned);
+                        vec![Span::Abbreviation { short, long }]
+                    }
                     // links
                     Node::Element(el) if el.name() == "a" => {
                         let text = get_text_from_node(&node, false);
@@ -343,6 +352,7 @@ impl RichTextSpan {
     pub fn normal_text(&self) -> Option<&str> {
         match self {
             Self::Text { text } => Some(text),
+            Self::Abbreviation { short, .. } => Some(short),
             Self::SiteLink { text, .. }
             | Self::SiteLinkNonExistent { text, .. }
             | Self::ExternalLink { text, .. } => Some(text),
@@ -364,29 +374,30 @@ impl RichTextSpan {
         let search = search.as_ref().to_lowercase();
 
         // eligible search scope
-        let (text, link) = match self {
-            Self::Text { text } => (Some(text), None),
+        let search_scope = match self {
+            Self::Text { text } | Self::Subscript { text } => vec![text],
+            Self::Abbreviation { short, long } => iter::once(short).chain(long.as_ref()).collect(),
             Self::SiteLink { text, link }
             | Self::SiteLinkNonExistent { text, link }
             | Self::ExternalLink { text, link } => {
                 // link text is always shown
-                (Some(text), if include_links { Some(link) } else { None })
+                iter::once(text)
+                    .chain(include_links.then_some(link))
+                    .collect()
             }
             Self::Note { note_id: id, .. } | Self::Reference { ref_id: id, .. } => {
-                if include_notes_and_references {
-                    (None, Some(id))
-                } else {
-                    (None, None)
-                }
+                include_notes_and_references
+                    .then_some(id)
+                    .into_iter()
+                    .collect()
             }
-            Self::Annotation { .. } => (None, None), // annotations are not helpful
-            Self::Subscript { text } => (Some(text), None),
-            Self::Unknown { text, .. } => (Some(text), None),
+            Self::Annotation { .. } => vec![], // annotations are not helpful
+            Self::Unknown { text, .. } => vec![text],
         };
 
         // matches if found anywhere in search scope
-        text.iter()
-            .chain(link.iter())
+        search_scope
+            .into_iter()
             .any(|t| t.to_lowercase().contains(&search))
     }
 }
