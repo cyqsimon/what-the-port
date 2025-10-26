@@ -154,7 +154,7 @@ impl PortRangeInfo {
             .rich_description
             .iter()
             .filter_map(RichTextSpan::normal_text)
-            .map(str::to_lowercase)
+            .map(|s| s.to_lowercase())
             .join("");
         if text.contains(&search) {
             return true;

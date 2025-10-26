@@ -337,6 +337,9 @@ impl<'a> PortUseCase<'a> {
                         notes_and_refs.push((color!(tag, Yellow).to_string(), url));
                     }
                 }
+                Span::Subscript { text } => {
+                    description.push_str(&format!("_{{{text}}}")); // LaTeX syntax
+                }
                 Span::Unknown { text, err: _ } => {
                     description.push_str(text);
                 }

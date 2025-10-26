@@ -201,6 +201,8 @@ pub enum RichTextSpan {
     ///
     /// Always a site link.
     Annotation { text: String, link: String },
+    /// A subscript.
+    Subscript { text: String },
     /// A span of unknown type.
     Unknown {
         text: String,
@@ -317,6 +319,11 @@ impl RichTextSpan {
 
                         bail!("Encountered an unknown superscript item")
                     }
+                    // subscripts
+                    Node::Element(el) if el.name() == "sub" => {
+                        let text = get_text_from_node(&node, false);
+                        vec![Span::Subscript { text }]
+                    }
                     Node::Element(el) => bail!("Encountered an unknown tag: {el:?}"),
                 };
 
@@ -332,7 +339,7 @@ impl RichTextSpan {
         })
     }
 
-    /// Get the displayed text, excluding all superscripts and subscripts.
+    /// Get the displayed text, excluding all known kinds of superscript.
     pub fn normal_text(&self) -> Option<&str> {
         match self {
             Self::Text { text } => Some(text),
@@ -340,6 +347,7 @@ impl RichTextSpan {
             | Self::SiteLinkNonExistent { text, .. }
             | Self::ExternalLink { text, .. } => Some(text),
             Self::Note { .. } | Self::Reference { .. } | Self::Annotation { .. } => None,
+            Self::Subscript { text } => Some(text),
             Self::Unknown { text, .. } => Some(text),
         }
     }
@@ -372,6 +380,7 @@ impl RichTextSpan {
                 }
             }
             Self::Annotation { .. } => (None, None), // annotations are not helpful
+            Self::Subscript { text } => (Some(text), None),
             Self::Unknown { text, .. } => (Some(text), None),
         };
 
