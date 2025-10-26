@@ -248,6 +248,8 @@ impl RichTextSpan {
                             vec![Span::Text { text }]
                         }
                     }
+                    // ignore linebreaks
+                    Node::Element(el) if el.name() == "br" => vec![],
                     // ignore tags with no semantic significance and recurse
                     Node::Element(el) if matches!(el.name(), "span" | "b" | "i") => node
                         .children()
