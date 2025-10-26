@@ -6,7 +6,7 @@ use std::{
 use color_eyre::eyre::{bail, OptionExt};
 use ego_tree::NodeRef;
 use itertools::Itertools;
-use log::trace;
+use log::{trace, warn};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use scraper::{node::Element, CaseSensitivity, ElementRef, Html, Node, Selector};
@@ -324,6 +324,7 @@ impl RichTextSpan {
         }
 
         parse_impl(node).unwrap_or_else(|err| {
+            warn!("{err}");
             vec![Self::Unknown {
                 text: get_text_from_node(&node, false),
                 err: Arc::new(err),
