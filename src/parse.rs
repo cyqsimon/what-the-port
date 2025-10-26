@@ -186,6 +186,8 @@ pub enum RichTextSpan {
     Text { text: String },
     /// Abbreviation.
     Abbreviation { short: String, long: Option<String> },
+    /// Code block.
+    Code { text: String },
     /// A link to somewhere within the same origin.
     SiteLink { text: String, link: String },
     /// A link to somewhere within the same origin that does not yet exist.
@@ -259,6 +261,11 @@ impl RichTextSpan {
                         let short = get_text_from_node(&node, false);
                         let long = el.attr("title").map(ToOwned::to_owned);
                         vec![Span::Abbreviation { short, long }]
+                    }
+                    // code blocks
+                    Node::Element(el) if el.name() == "code" => {
+                        let text = get_text_from_node(&node, false);
+                        vec![Span::Code { text }]
                     }
                     // links
                     Node::Element(el) if el.name() == "a" => {
@@ -353,6 +360,7 @@ impl RichTextSpan {
         match self {
             Self::Text { text } => Some(text),
             Self::Abbreviation { short, .. } => Some(short),
+            Self::Code { text } => Some(text),
             Self::SiteLink { text, .. }
             | Self::SiteLinkNonExistent { text, .. }
             | Self::ExternalLink { text, .. } => Some(text),
@@ -375,7 +383,7 @@ impl RichTextSpan {
 
         // eligible search scope
         let search_scope = match self {
-            Self::Text { text } | Self::Subscript { text } => vec![text],
+            Self::Text { text } | Self::Code { text } | Self::Subscript { text } => vec![text],
             Self::Abbreviation { short, long } => iter::once(short).chain(long.as_ref()).collect(),
             Self::SiteLink { text, link }
             | Self::SiteLinkNonExistent { text, link }

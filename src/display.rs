@@ -282,6 +282,9 @@ impl<'a> PortUseCase<'a> {
                         description.push_str(&format!(" ({long})"));
                     }
                 }
+                Span::Code { text } => {
+                    description.push_str(&format!("`{text}`"));
+                }
                 Span::SiteLink { text, link } => {
                     let url = format!("{ORIGIN_BASE_URL}{link}");
                     if let Some(idx) = show_links.as_mut() {
