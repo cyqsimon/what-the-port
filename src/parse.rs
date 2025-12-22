@@ -164,6 +164,13 @@ where
     // description
     let description_cell = cells.next().ok_or_eyre("Row has no description cell")?;
     let rich_description = parse_rich_text_cell(description_cell)?;
+    if rich_description.is_empty() {
+        warn!(
+            "Ports {}-{} contain a row with empty description",
+            port_range.start(),
+            port_range.end(),
+        );
+    }
 
     Ok(PortRangeInfo {
         number: port_range,
