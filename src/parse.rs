@@ -256,18 +256,26 @@ impl RichTextSpan {
                         }
                     }
                     // ignore linebreaks
-                    Node::Element(el) if el.name() == "br" => vec![],
+                    Node::Element(el) if el.name() == "br" => {
+                        trace!("Ignoring `<br>`");
+                        vec![]
+                    }
                     // ignore non-display tags
                     // see rev 1328868668: ports 225–241, 249–255
-                    Node::Element(el) if matches!(el.name(), "style" | "link") => vec![],
+                    Node::Element(el) if matches!(el.name(), "style" | "link") => {
+                        trace!("Ignoring `<{}>`", el.name());
+                        vec![]
+                    }
                     // ignore tags with no semantic significance and recurse
-                    Node::Element(el) if matches!(el.name(), "span" | "b" | "i") => node
-                        .children()
-                        .map(parse_impl)
-                        .collect::<Result<Vec<_>, _>>()?
-                        .into_iter()
-                        .flatten()
-                        .collect(),
+                    Node::Element(el) if matches!(el.name(), "span" | "b" | "i") => {
+                        trace!("Transparently recursing into `<{}>`", el.name());
+                        node.children()
+                            .map(parse_impl)
+                            .collect::<Result<Vec<_>, _>>()?
+                            .into_iter()
+                            .flatten()
+                            .collect()
+                    }
                     // abbreviations
                     Node::Element(el) if el.name() == "abbr" => {
                         let short = get_text_from_node(&node, false);
