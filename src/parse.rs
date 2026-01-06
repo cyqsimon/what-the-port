@@ -257,6 +257,9 @@ impl RichTextSpan {
                     }
                     // ignore linebreaks
                     Node::Element(el) if el.name() == "br" => vec![],
+                    // ignore non-display tags
+                    // see rev 1328868668: ports 225–241, 249–255
+                    Node::Element(el) if matches!(el.name(), "style" | "link") => vec![],
                     // ignore tags with no semantic significance and recurse
                     Node::Element(el) if matches!(el.name(), "span" | "b" | "i") => node
                         .children()
