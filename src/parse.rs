@@ -225,16 +225,16 @@ pub enum RichTextSpan {
 }
 impl RichTextSpan {
     fn parse(node: NodeRef<Node>) -> Vec<Self> {
-        use CaseSensitivity::CaseSensitive as Cased;
-        use RichTextSpan as Span;
-
         /// Helper function to simplify error handling.
         ///
         /// - Returns an empty list if the node is a known type but should be ignored.
         /// - Returns a one-item list in most scenarios.
         /// - May return a multi-item list when we need to recurse.
         /// - Returns `Err(...)` if the node is unknown or is known but has unexpected format.
-        fn parse_impl(node: NodeRef<Node>) -> color_eyre::Result<Vec<Span>> {
+        fn parse_impl(node: NodeRef<Node>) -> color_eyre::Result<Vec<RichTextSpan>> {
+            use CaseSensitivity::CaseSensitive as Cased;
+            use RichTextSpan as Span;
+
             let span =
                 match node.value() {
                     n @ Node::Document
