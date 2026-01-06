@@ -7,7 +7,7 @@ use std::{
 use color_eyre::eyre::{bail, OptionExt};
 use ego_tree::NodeRef;
 use itertools::Itertools;
-use log::{trace, warn};
+use log::{info, trace, warn};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use scraper::{node::Element, CaseSensitivity, ElementRef, Html, Node, Selector};
@@ -43,7 +43,7 @@ fn parse_table(table: ElementRef<'_>) -> color_eyre::Result<Vec<PortRangeInfo>> 
     let cell_selector = Selector::parse("td").unwrap();
     let row_selector = Selector::parse("tbody>tr").unwrap();
 
-    let mut list = vec![];
+    let mut list: Vec<PortRangeInfo> = vec![];
 
     let mut rows = table.select(&row_selector).peekable();
 
@@ -66,6 +66,13 @@ fn parse_table(table: ElementRef<'_>) -> color_eyre::Result<Vec<PortRangeInfo>> 
         // parse port range
         let range_cell = cells.next().ok_or_eyre("Encountered an empty row")?;
         let (range, span) = parse_port_range(range_cell)?;
+        if list.iter().any(|info| info.number == range) {
+            info!(
+                "Port range {}-{} is seen multiple times and can be merged",
+                range.start(),
+                range.end(),
+            );
+        }
 
         // parse this row
         let info = parse_row_info(range.clone(), cells)?;
