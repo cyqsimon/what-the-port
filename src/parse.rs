@@ -1,13 +1,13 @@
 use std::{
     iter,
     ops::{Deref, RangeInclusive},
-    sync::Arc,
+    sync::{Arc, LazyLock},
 };
 
 use color_eyre::eyre::{bail, OptionExt};
 use ego_tree::NodeRef;
 use itertools::Itertools;
-use log::{info, trace, warn};
+use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use scraper::{node::Element, CaseSensitivity, ElementRef, Html, Node, Selector};
@@ -33,6 +33,9 @@ pub fn parse_page(html_str: &str) -> color_eyre::Result<PortDatabase> {
     Ok(PortDatabase(list))
 }
 
+static CELL_SELECTOR: LazyLock<Selector> = LazyLock::new(|| Selector::parse("td").unwrap());
+static ROW_SELECTOR: LazyLock<Selector> = LazyLock::new(|| Selector::parse("tbody>tr").unwrap());
+
 /// Parse a table that contains a list of ports with their descriptions.
 fn parse_table(table: ElementRef<'_>) -> color_eyre::Result<Vec<PortRangeInfo>> {
     // sanity check
@@ -40,18 +43,15 @@ fn parse_table(table: ElementRef<'_>) -> color_eyre::Result<Vec<PortRangeInfo>> 
         bail!("A port table should be a `table` element")
     }
 
-    let cell_selector = Selector::parse("td").unwrap();
-    let row_selector = Selector::parse("tbody>tr").unwrap();
-
     let mut list: Vec<PortRangeInfo> = vec![];
 
-    let mut rows = table.select(&row_selector).peekable();
+    let mut rows = table.select(&ROW_SELECTOR).peekable();
 
     // the first row could be the header (contains only `th`s)
     if rows
         .peek()
         .ok_or_eyre("Table has 0 rows")?
-        .select(&cell_selector)
+        .select(&CELL_SELECTOR)
         .next()
         .is_none()
     {
@@ -60,34 +60,64 @@ fn parse_table(table: ElementRef<'_>) -> color_eyre::Result<Vec<PortRangeInfo>> 
     }
 
     // parse all rows
-    while let Some(row) = rows.next() {
-        let mut cells = row.select(&cell_selector).collect_vec().into_iter();
+    while rows.peek().is_some() {
+        match parse_single_port_range_rows(&mut rows) {
+            Ok(new_items) => {
+                assert!(!new_items.is_empty());
+                assert!(new_items.iter().map(|info| &info.number).all_equal());
 
-        // parse port range
-        let range_cell = cells.next().ok_or_eyre("Encountered an empty row")?;
-        let (range, span) = parse_port_range(range_cell)?;
-        if list.iter().any(|info| info.number == range) {
-            info!(
-                "Port range {}-{} is seen multiple times and can be merged",
-                range.start(),
-                range.end(),
-            );
-        }
+                // check mergeable
+                let range = &new_items[0].number;
+                if list.iter().find(|info| &info.number == range).is_some() {
+                    info!(
+                        "Port range {}-{} is seen multiple times and can be merged",
+                        range.start(),
+                        range.end(),
+                    );
+                }
 
-        // parse this row
-        let info = parse_row_info(range.clone(), cells)?;
-        list.push(info);
-
-        // parse subsequent rows in multi-row case
-        for _ in 1..span {
-            let row = rows
-                .next()
-                .ok_or_eyre("No more rows while parsing a multi-row port")?;
-            let cells = row.select(&cell_selector).collect_vec().into_iter();
-            let info = parse_row_info(range.clone(), cells)?;
-            list.push(info);
+                list.extend(new_items);
+            }
+            Err(err) => error!("{err}"),
         }
     }
+
+    Ok(list)
+}
+
+/// Parse one or more rows that share a single port range cell.
+fn parse_single_port_range_rows<'a>(
+    mut row_it: impl Iterator<Item = ElementRef<'a>>,
+) -> color_eyre::Result<Vec<PortRangeInfo>> {
+    let Some(row) = row_it.next() else {
+        bail!("No more rows to parse")
+    };
+    let mut cells = row.select(&CELL_SELECTOR).collect_vec().into_iter();
+
+    // parse port range
+    let range_cell = cells.next().ok_or_eyre("Encountered an empty row")?;
+    let (range, span) = parse_port_range(range_cell)?;
+
+    let mut list = vec![];
+
+    // parse this row
+    let info = parse_row_info(range.clone(), cells)?;
+    list.push(info);
+
+    // parse subsequent rows in multi-row case
+    let multi_rows = (1..span)
+        .map(|_| {
+            let row = row_it
+                .next()
+                .ok_or_eyre("No more rows while parsing a multi-row port")?;
+            let cells = row.select(&CELL_SELECTOR).collect_vec().into_iter();
+            parse_row_info(range.clone(), cells)
+        })
+        // don't short-circuit on error, so that all rows of this port are consumed
+        .collect::<Vec<_>>()
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
+    list.extend(multi_rows);
 
     Ok(list)
 }
