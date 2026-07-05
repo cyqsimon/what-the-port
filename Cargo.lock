@@ -2607,7 +2607,6 @@ dependencies = [
  "ego-tree",
  "itertools",
  "log",
- "once_cell",
  "regex",
  "reqwest",
  "scraper",

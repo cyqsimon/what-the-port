@@ -8,7 +8,6 @@ use color_eyre::eyre::{bail, OptionExt};
 use ego_tree::NodeRef;
 use itertools::Itertools;
 use log::{error, info, trace, warn};
-use once_cell::sync::Lazy;
 use regex::Regex;
 use scraper::{node::Element, CaseSensitivity, ElementRef, Html, Node, Selector};
 use serde::Serialize;
@@ -365,8 +364,8 @@ impl RichTextSpan {
                         }
 
                         if el.has_class("reference", Cased) {
-                            static REF_REGEX: Lazy<Regex> =
-                                Lazy::new(|| Regex::new(r"\[(\d+)\]").unwrap());
+                            static REF_REGEX: LazyLock<Regex> =
+                                LazyLock::new(|| Regex::new(r"\[(\d+)\]").unwrap());
                             if let Some(caps) = REF_REGEX.captures(&text) {
                                 let number = caps.get(1).unwrap().as_str().parse()?;
                                 let Some(link_el) = node.descendants().find_map(|n| {
@@ -380,8 +379,8 @@ impl RichTextSpan {
                                 break 'el vec![Span::Reference { number, ref_id }];
                             }
 
-                            static NOTE_REGEX: Lazy<Regex> =
-                                Lazy::new(|| Regex::new(r"\[note (\d+)\]").unwrap());
+                            static NOTE_REGEX: LazyLock<Regex> =
+                                LazyLock::new(|| Regex::new(r"\[note (\d+)\]").unwrap());
                             if let Some(caps) = NOTE_REGEX.captures(&text) {
                                 let number = caps.get(1).unwrap().as_str().parse()?;
                                 let Some(link_el) = node.descendants().find_map(|n| {
