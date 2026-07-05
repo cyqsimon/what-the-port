@@ -67,7 +67,7 @@ fn parse_table(table: ElementRef<'_>) -> color_eyre::Result<Vec<PortRangeInfo>> 
 
                 // check mergeable
                 let range = &new_items[0].number;
-                if list.iter().find(|info| &info.number == range).is_some() {
+                if list.iter().any(|info| &info.number == range) {
                     info!(
                         "Port range {}-{} is seen multiple times and can be merged",
                         range.start(),
