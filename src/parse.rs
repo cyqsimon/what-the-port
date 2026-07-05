@@ -169,7 +169,7 @@ fn parse_port_range(cell: ElementRef<'_>) -> color_eyre::Result<(RangeInclusive<
 /// where a port has multiple uses and therefore has multiple rows.
 fn parse_row_info<'a, I>(
     port_range: RangeInclusive<u16>,
-    mut cells: I,
+    cells: I,
 ) -> color_eyre::Result<PortRangeInfo>
 where
     I: DoubleEndedIterator<Item = ElementRef<'a>>,
@@ -178,6 +178,12 @@ where
     // and use the remaining cells as port type
     // but this approach does not handle extraneous cells well
     // see revision 1248795838, port 9876
+
+    // check empty row
+    let mut cells = cells.peekable();
+    if cells.peek().is_none() {
+        bail!("Encountered an empty row in `parse_row_info`");
+    }
 
     // TCP, UDP, SCTP, DCCP
     let mut port_types = [PortType::Unused; 4];
